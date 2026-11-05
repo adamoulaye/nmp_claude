@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nmp"
+version = "0.1.0"
+description = "News-Market Platform : corrélation actualités financières / dynamiques boursières"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.1", "numpy>=1.26", "scipy>=1.11", "requests>=2.31", "tenacity>=8.2",
+  "pandas-market-calendars>=4.4", "datasketch>=1.6", "yfinance>=0.2.40", "praw>=7.7",
+]
+
+[project.optional-dependencies]
+stream = ["alpaca-py>=0.30", "confluent-kafka>=2.4"]
+local = ["python-dotenv>=1.0", "deltalake>=0.17", "pyarrow>=15", "matplotlib>=3.8"]
+ml = ["scikit-learn>=1.4", "xgboost>=2.0", "statsmodels>=0.14", "mlflow>=2.14",
+      "transformers>=4.41", "torch>=2.2"]
+dev = ["pytest>=8", "duckdb>=1.0", "pytest-cov", "ruff>=0.5", "mypy>=1.10", "pandas-stubs", "types-requests"]
+
+[project.scripts]
+nmp = "nmp.cli:main"
+nmp-stream = "nmp.streaming.streamer:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "E731"]
+# S608 : le SQL des jobs n'interpole que des noms de catalogue/horodatages issus de la configuration, jamais une saisie externe
+"src/nmp/jobs.py" = ["S608"]
+"src/nmp/pipelines/*" = ["E501"]
+"src/nmp/common/lakehouse.py" = ["S608"]
+"scripts/*" = ["S", "E501", "I001"]
+"src/nmp/local/*" = ["S", "E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+# Code propre à Databricks (variables globales spark/dbutils) : non vérifiable hors du workspace
+[[tool.mypy.overrides]]
+module = ["nmp.pipelines.*"]
+ignore_errors = true
+
+# Bruit des stubs pandas sur des opérations correctes (testées)
+[[tool.mypy.overrides]]
+module = ["nmp.transform.adjust", "nmp.ml.anomaly", "nmp.ingestion.base"]
+disable_error_code = ["call-overload", "arg-type", "type-var", "operator"]
+
+[tool.coverage.run]
+# Les modules qui exigent Spark, le réseau ou Databricks ne sont pas testables en CI légère : on mesure la logique pure
+omit = ["src/nmp/jobs.py", "src/nmp/common/lakehouse.py", "src/nmp/common/runlog.py", "src/nmp/cli.py", "src/nmp/pipelines/*", "src/nmp/streaming/*", "src/nmp/ingestion/*",
+        "src/nmp/local/sources/*", "src/nmp/local/delta_io.py", "src/nmp/local/bronze.py", "src/nmp/ml/event_classifier.py",
+        "src/nmp/ml/registry.py", "src/nmp/ml/granger.py", "src/nmp/ml/drift.py"]
