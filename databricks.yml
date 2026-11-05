@@ -3,8 +3,8 @@ bundle:
   name: nmp
 
 variables:
-  catalog: {default: nmp_dev}
-  warehouse_id: {description: "ID du SQL Warehouse"}
+  catalog: {default: mnp_dev}
+  warehouse_id: {default: "b44331fc39571032"}
   kafka_bootstrap: {default: "nmp-ns.servicebus.windows.net:9093"}
   alert_email: {default: "data-team@exemple.com"}
   sp_application_id: {default: "00000000-0000-0000-0000-000000000000"}
@@ -21,13 +21,13 @@ targets:
   dev:
     mode: development
     default: true
-    workspace: {host: "https://adb-XXXX.azuredatabricks.net"}
-    variables: {catalog: nmp_dev}
+    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net"}
+    variables: {catalog: mnp_dev}
   staging:
-    workspace: {host: "https://adb-XXXX.azuredatabricks.net", root_path: /Shared/.bundle/nmp/staging}
-    variables: {catalog: nmp_stg}
+    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net", root_path: /Shared/.bundle/nmp/staging}
+    variables: {catalog: mnp_stg}
   prod:
     mode: production
-    workspace: {host: "https://adb-YYYY.azuredatabricks.net", root_path: /Shared/.bundle/nmp/prod}
-    variables: {catalog: nmp_prod}
+    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net", root_path: /Shared/.bundle/nmp/prod}
+    variables: {catalog: mnp_prod}
     run_as: {service_principal_name: "${var.sp_application_id}"}
