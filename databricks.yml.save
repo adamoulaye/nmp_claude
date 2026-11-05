@@ -1,0 +1,34 @@
+"https://adb-XXXX.azuredatabricks.ne
+# Databricks Asset Bundle — déploiement as-code (dev / staging / prod)
+bundle:
+  name: nmp
+
+variables:
+  catalog: {default: nmp_dev}
+  warehouse_id: {description: "ID du SQL Warehouse"}
+  kafka_bootstrap: {default: "nmp-ns.servicebus.windows.net:9093"}
+  alert_email: {default: "data-team@exemple.com"}
+  sp_application_id: {default: "00000000-0000-0000-0000-000000000000"}
+
+artifacts:
+  nmp_wheel:
+    type: whl
+    build: python -m build --wheel
+    path: .
+
+include: ["resources/*.yml"]
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace: {host: "https://adb-XXXX.azuredatabricks.net"}
+    variables: {catalog: nmp_dev}
+  staging:
+    workspace: {host: "https://adb-XXXX.azuredatabricks.net", root_path: /Shared/.bundle/nmp/staging}
+    variables: {catalog: nmp_stg}
+  prod:
+    mode: production
+    workspace: {host: "https://adb-YYYY.azuredatabricks.net", root_path: /Shared/.bundle/nmp/prod}
+    variables: {catalog: nmp_prod}
+    run_as: {service_principal_name: "${var.sp_application_id}"}
