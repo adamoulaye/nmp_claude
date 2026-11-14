@@ -9,3 +9,17 @@ dist/
 .databricks/
 data/
 *.parquet
+
+# Données locales d export (Alpaca / Yahoo)
+*.jsonl
+.env.*
+!.env.example
+
+build/
+dist/
+*.egg-info/
+
+*.bak
+data_*/
+patch_publish.py
+patch2.py
