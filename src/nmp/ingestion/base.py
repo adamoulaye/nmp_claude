@@ -17,6 +17,11 @@ from nmp.common.lakehouse import get_watermark, merge_insert_only, set_watermark
 from nmp.common.retry import SchemaDrift
 from nmp.common.runlog import run_log
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalise un datetime en UTC, en interprétant les dates naïves comme UTC."""
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 @dataclass
 class Record:
@@ -60,9 +65,14 @@ class BaseSource(ABC):
 def run_source(spark, src: BaseSource, *, default_start: datetime, until: datetime | None = None) -> None:
     """Ingestion fenêtrée : watermark - chevauchement -> fetch -> validation -> MERGE -> watermark."""
     cat = src.s.catalog
-    until = until or datetime.now(timezone.utc)
+
+    until = _as_utc(until if until is not None else datetime.now(timezone.utc))
+    default_start = _as_utc(default_start)
+
     with run_log(spark, cat, "ingest", src.name) as st:
-        since = get_watermark(spark, cat, src.name, default_start) - timedelta(minutes=src.s.overlap_minutes)
+        watermark = _as_utc(get_watermark(spark, cat, src.name, default_start))
+        since = watermark - timedelta(minutes=src.s.overlap_minutes)
+
         good, bad, fingerprints = [], [], set()
         for raw in src.fetch(since, until):
             st.received += 1
@@ -99,9 +109,28 @@ def run_source(spark, src: BaseSource, *, default_start: datetime, until: dateti
             )
         st.rejected, st.kept = len(bad), len(good)
         if good:
+            from pyspark.sql.types import (
+                StringType,
+                StructField,
+                StructType,
+                TimestampType,
+            )
+
+            good_schema = StructType([
+                StructField("source", StringType(), True),
+                StructField("record_id", StringType(), True),
+                StructField("symbol", StringType(), True),
+                StructField("published_utc", TimestampType(), True),
+                StructField("updated_utc", TimestampType(), True),
+                StructField("ingested_utc", TimestampType(), True),
+                StructField("payload", StringType(), True),
+                StructField("record_hash", StringType(), True),
+                StructField("schema_fp", StringType(), True),
+            ])
+
             merge_insert_only(
                 spark,
-                spark.createDataFrame(good),
+                spark.createDataFrame(good, schema=good_schema),
                 f"{cat}.{src.bronze_table}",
                 ["source", "record_id", "record_hash"],
             )

@@ -29,8 +29,8 @@ class FinnhubNews(BaseSource):
                     "symbol": sym,
                     "from": since.date().isoformat(),
                     "to": until.date().isoformat(),
-                    "token": self.s.finnhub_key,
                 },
+                headers={"X-Finnhub-Token": self.s.finnhub_key},
             )
             for r in rows:
                 r["_symbol"] = sym
@@ -58,14 +58,23 @@ class FinnhubSentiment(BaseSource):
             r = get_json(
                 self.http,
                 "https://finnhub.io/api/v1/news-sentiment",
-                params={"symbol": sym, "token": self.s.finnhub_key},
+                params={"symbol": sym},
+                headers={"X-Finnhub-Token": self.s.finnhub_key},
             )
             r["_asof"] = datetime.now(timezone.utc).isoformat()
             yield r
 
     def to_record(self, raw):
         ts = _dt(raw["_asof"])
-        return Record(self.name, f"{raw['symbol']}:{ts:%Y%m%d}", raw["symbol"], ts, None, raw)
+        payload = {k: v for k, v in raw.items() if k != "_asof"}
+        return Record(
+            self.name,
+            f"{raw['symbol']}:{ts:%Y%m%d}",
+            raw["symbol"],
+            ts,
+            None,
+            payload,
+        )
 
 
 class AlpacaNews(BaseSource):
@@ -209,16 +218,25 @@ class RedditMemes(BaseSource):
         return Record(self.name, raw["id"], None, _dt(pd.to_datetime(raw["created_utc"], unit="s", utc=True)), None, raw)
 
 
+
 class AlpacaBars1m(BaseSource):
-    """Barres 1 min brutes (adjustment=raw) : on ajuste nous-mêmes -> recalculable et traçable."""
+    """Barres Alpaca 1 minute, brutes et traçables."""
 
     name = "alpaca_bars_1m"
     bronze_table = "bronze.raw_bars"
+
     expected_keys = frozenset({"t", "o", "h", "l", "c", "v"})
 
     def fetch(self, since, until):
+        """
+        Récupère les barres historiques pour chaque symbole.
+
+        La pagination Alpaca est conservée pour ne pas perdre
+        les données lorsque la limite de résultats est atteinte.
+        """
         for sym in self.s.bar_tickers:
             token = None
+
             while True:
                 params = {
                     "symbols": sym,
@@ -227,10 +245,12 @@ class AlpacaBars1m(BaseSource):
                     "end": until.isoformat(),
                     "limit": 10000,
                     "adjustment": "raw",
-                    "feed": self.s.alpaca_feed,
+                    "feed": self.s.alpaca_historical_feed,
                 }
+
                 if token:
                     params["page_token"] = token
+
                 res = get_json(
                     self.http,
                     "https://data.alpaca.markets/v2/stocks/bars",
@@ -240,15 +260,29 @@ class AlpacaBars1m(BaseSource):
                         "APCA-API-SECRET-KEY": self.s.alpaca_secret,
                     },
                 )
-                for b in res.get("bars", {}).get(sym, []):
-                    b["_symbol"] = sym
-                    yield b
+
+                bars = res.get("bars", {}).get(sym, [])
+
+                for bar in bars:
+                    record = dict(bar)
+                    record["_symbol"] = sym
+                    yield record
+
                 token = res.get("next_page_token")
+
                 if not token:
                     break
 
     def to_record(self, raw):
-        return Record(self.name, f"{raw['_symbol']}:{raw['t']}", raw["_symbol"], _dt(raw["t"]), None, raw)
+        """Convertit une barre Alpaca en enregistrement Bronze."""
+        return Record(
+            self.name,
+            f"{raw['_symbol']}:{raw['t']}",
+            raw["_symbol"],
+            _dt(raw["t"]),
+            None,
+            raw,
+        )
 
 
 class YahooDaily(BaseSource):

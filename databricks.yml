@@ -1,3 +1,4 @@
+
 # Databricks Asset Bundle — déploiement as-code (dev / staging / prod)
 bundle:
   name: nmp
@@ -5,8 +6,8 @@ bundle:
 variables:
   catalog: {default: mnp_dev}
   warehouse_id: {default: "b44331fc39571032"}
-  kafka_bootstrap: {default: "nmp-ns.servicebus.windows.net:9093"}
-  alert_email: {default: "data-team@exemple.com"}
+  kafka_bootstrap: {default: "nmp-ns-dev-2026.servicebus.windows.net:9093"}
+  alert_email: {default: "adamlaye06@gmail.com"}
   sp_application_id: {default: "00000000-0000-0000-0000-000000000000"}
 
 artifacts:
@@ -21,13 +22,25 @@ targets:
   dev:
     mode: development
     default: true
-    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net"}
-    variables: {catalog: mnp_dev}
+    workspace:
+      host: "https://dbc-122b634f-12f5.cloud.databricks.com"
+    variables:
+      catalog: mnp_dev
+      warehouse_id: "601d8e918b421d97"
+
   staging:
-    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net", root_path: /Shared/.bundle/nmp/staging}
-    variables: {catalog: mnp_stg}
+    workspace:
+      host: "https://adb-7405611574323672.12.azuredatabricks.net"
+      root_path: /Shared/.bundle/nmp/staging
+    variables:
+      catalog: mnp_stg
+
   prod:
     mode: production
-    workspace: {host: "https://adb-7405611574323672.12.azuredatabricks.net", root_path: /Shared/.bundle/nmp/prod}
-    variables: {catalog: mnp_prod}
-    run_as: {service_principal_name: "${var.sp_application_id}"}
+    workspace:
+      host: "https://adb-7405611574323672.12.azuredatabricks.net"
+      root_path: /Shared/.bundle/nmp/prod
+    variables:
+      catalog: mnp_prod
+    run_as:
+      service_principal_name: "${var.sp_application_id}"

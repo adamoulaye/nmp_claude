@@ -12,7 +12,12 @@ URL = "https://finnhub.io/api/v1/company-news"
 def fetch_company_news(symbol: str, date_from: str, date_to: str, session=None) -> list[dict]:
     """date_from / date_to: 'YYYY-MM-DD'. Si une reponse semble plafonnee, reduire la fenetre."""
     s = session or make_session()
-    r = s.get(URL, params={"symbol": symbol, "from": date_from, "to": date_to, "token": FINNHUB_API_KEY}, timeout=30)
+    r = s.get(
+        URL,
+        params={"symbol": symbol, "from": date_from, "to": date_to},
+        headers={"X-Finnhub-Token": FINNHUB_API_KEY},
+        timeout=30,
+    )
     r.raise_for_status()
     return r.json()
 

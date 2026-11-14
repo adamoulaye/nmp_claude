@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nmp"
-version = "0.1.0"
+version = "0.1.1"
 description = "News-Market Platform : corrélation actualités financières / dynamiques boursières"
 requires-python = ">=3.10"
 dependencies = [
   "pandas>=2.1", "numpy>=1.26", "scipy>=1.11", "requests>=2.31", "tenacity>=8.2",
-  "pandas-market-calendars>=4.4", "datasketch>=1.6", "yfinance>=0.2.40", "praw>=7.7",
+  "pandas-market-calendars>=4.4", "datasketch>=1.6", "yfinance>=0.2.40", "praw>=7.7", "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
 stream = ["alpaca-py>=0.30", "confluent-kafka>=2.4"]
-local = ["python-dotenv>=1.0", "deltalake>=0.17", "pyarrow>=15", "matplotlib>=3.8"]
+local = ["deltalake>=0.17", "pyarrow>=15", "matplotlib>=3.8"]
 ml = ["scikit-learn>=1.4", "xgboost>=2.0", "statsmodels>=0.14", "mlflow>=2.14",
       "transformers>=4.41", "torch>=2.2"]
 dev = ["pytest>=8", "duckdb>=1.0", "pytest-cov", "ruff>=0.5", "mypy>=1.10", "pandas-stubs", "types-requests"]

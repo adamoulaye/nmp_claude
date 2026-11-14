@@ -1,19 +1,22 @@
-"""Étude d'événements en LOT : une ligne de résultat par (article, titre), plus la fenêtre détaillée.
 
-C'est le maillon qui manquait au pipeline : il transforme « premières publications en séance » + « barres 1 min »
-en CAR, t, p-value et test de fuite d'information (`leak_flag`), puis au format de la table bv_event_car.
-Pur pandas : testé sans Spark. Le job Databricks `jobs.car` ne fait que lire et écrire.
-"""
+"""Calcul batch des CAR par article, titre et reference temporelle."""
 
 from __future__ import annotations
 
 import pandas as pd
 
 from nmp import __version__ as CODE_VERSION
-from nmp.transform.event_study import compute_event
+from nmp.transform.event_study import (
+    IncompleteEventError,
+    compute_event,
+)
 
 BENCHMARK = "SPY"
-WINDOWS = ((15, "car_0_15", "t_0_15", "p_0_15"), (60, "car_0_60", "t_0_60", "p_0_60"))
+
+WINDOWS = (
+    (15, "car_0_15", "t_0_15", "p_0_15"),
+    (60, "car_0_60", "t_0_60", "p_0_60"),
+)
 
 
 def run_batch(
@@ -26,60 +29,184 @@ def run_batch(
     ts_col: str = "published_utc",
     keep: tuple[str, ...] = (),
 ):
-    """news : premières publications EN SÉANCE (is_first, session 'pendant'). bars : (ticker, ts_utc, close, volume), SPY inclus.
+    """Calcule les CAR et distingue les evenements incomplets."""
 
-    Retourne (résultats, fenêtres, erreurs). Les données manquantes sont journalisées dans `erreurs`, jamais fatales.
-    """
-    by = {t: g.sort_values("ts_utc") for t, g in bars.groupby("ticker")}
-    results, windows, errors = [], [], []
-    for row in news.to_dict("records"):
-        key, tic = row[id_col], row[ticker_col]
-        try:
-            summary, w = compute_event(by[tic], by[benchmark], row[ts_col])
-        except (KeyError, ValueError) as e:
-            errors.append({id_col: key, "error": f"{type(e).__name__}: {e}"[:150]})
-            continue
-        results.append(
-            {
-                id_col: key,
-                ticker_col: tic,
-                ts_col: row[ts_col],
-                **{c: row[c] for c in keep},
-                **summary,
-                "code_version": CODE_VERSION,
-                "computed_at": pd.Timestamp.now(tz="UTC"),
-            }
+    required_news = {id_col, ticker_col, ts_col}
+    missing_news = required_news.difference(news.columns)
+
+    if missing_news:
+        raise ValueError(
+            f"Colonnes manquantes dans news : {sorted(missing_news)}"
         )
-        windows.append(w.assign(**{id_col: key, ticker_col: tic}))
-    all_w = pd.concat(windows, ignore_index=True) if windows else pd.DataFrame()
-    return pd.DataFrame(results), all_w, pd.DataFrame(errors, columns=[id_col, "error"])
+
+    required_bars = {"ticker", "ts_utc", "close", "volume"}
+    missing_bars = required_bars.difference(bars.columns)
+
+    if missing_bars:
+        raise ValueError(
+            f"Colonnes manquantes dans bars : {sorted(missing_bars)}"
+        )
+
+    missing_keep = set(keep).difference(news.columns)
+
+    if missing_keep:
+        raise ValueError(
+            f"Colonnes keep absentes de news : {sorted(missing_keep)}"
+        )
+
+    by = {
+        ticker: group.sort_values("ts_utc")
+        for ticker, group in bars.groupby("ticker")
+    }
+
+    results = []
+    windows = []
+    errors = []
+
+    for row in news.to_dict("records"):
+        key = row.get(id_col)
+        ticker = row.get(ticker_col)
+
+        try:
+            if pd.isna(key):
+                raise ValueError("Identifiant article absent.")
+
+            if pd.isna(ticker):
+                raise ValueError("Ticker absent.")
+
+            if pd.isna(row.get(ts_col)):
+                raise ValueError("Horodatage de l'evenement absent.")
+
+            if ticker not in by:
+                raise ValueError(
+                    f"Aucune barre disponible pour {ticker}"
+                )
+
+            if benchmark not in by:
+                raise ValueError(
+                    f"Benchmark absent : {benchmark}"
+                )
+
+            summary, window = compute_event(
+                by[ticker],
+                by[benchmark],
+                row[ts_col],
+            )
+
+        except IncompleteEventError as exc:
+            errors.append({
+                id_col: key,
+                "error": str(exc)[:200],
+                "status": "pending",
+            })
+            continue
+
+        except (KeyError, ValueError, TypeError) as exc:
+            errors.append({
+                id_col: key,
+                "error": f"{type(exc).__name__}: {exc}"[:200],
+                "status": "error",
+            })
+            continue
+
+        result = {
+            id_col: key,
+            ticker_col: ticker,
+            ts_col: row[ts_col],
+            **{
+                column: row[column]
+                for column in keep
+            },
+            **summary,
+            "code_version": CODE_VERSION,
+            "computed_at": pd.Timestamp.now(tz="UTC"),
+        }
+
+        results.append(result)
+
+        windows.append(
+            window.assign(**{
+                id_col: key,
+                ticker_col: ticker,
+            })
+        )
+
+    all_windows = (
+        pd.concat(windows, ignore_index=True)
+        if windows
+        else pd.DataFrame()
+    )
+
+    return (
+        pd.DataFrame(results),
+        all_windows,
+        pd.DataFrame(
+            errors,
+            columns=[id_col, "error", "status"],
+        ),
+    )
 
 
 def to_bv_event_car(res: pd.DataFrame) -> pd.DataFrame:
-    """Résultats de run_batch(keep=('hk_security',), id_col='hk_article') -> lignes de business_vault.bv_event_car.
+    """Transforme les resultats CAR en deux lignes par evenement."""
 
-    Deux lignes par (article, titre) : fenêtres [1, 15] et [1, 60] ; la minute de publication (k = 0) est exclue.
-    """
-    parts = []
-    for end, car, t, p in WINDOWS:
-        parts.append(
-            pd.DataFrame(
-                {
-                    "hk_article": res["hk_article"],
-                    "hk_security": res["hk_security"],
-                    "window_start_min": 1,
-                    "window_end_min": end,
-                    "car": res[car],
-                    "t_stat": res[t],
-                    "p_value": res[p],
-                    "alpha": res["alpha"],
-                    "beta": res["beta"],
-                    "n_est": res["n_est"],
-                    "car_pre": res["car_pre"],
-                    "leak_flag": res["leak_flag"],
-                    "model_version": f"market-model-{CODE_VERSION}",
-                    "load_ts": res["computed_at"],
-                }
-            )
+    if res.empty:
+        return pd.DataFrame()
+
+    res = res.copy()
+
+    if "event_time_basis" not in res.columns:
+        res["event_time_basis"] = "published"
+
+    required = [
+        "hk_article",
+        "hk_security",
+        "event_time_basis",
+        "car_0_15",
+        "t_0_15",
+        "p_0_15",
+        "car_0_60",
+        "t_0_60",
+        "p_0_60",
+        "alpha",
+        "beta",
+        "n_est",
+        "car_pre",
+        "leak_flag",
+        "computed_at",
+    ]
+
+    missing = [
+        column
+        for column in required
+        if column not in res.columns
+    ]
+
+    if missing:
+        raise ValueError(
+            f"Colonnes manquantes pour bv_event_car : {missing}"
         )
-    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+
+    records = []
+
+    for row in res.to_dict("records"):
+        for window_end, car_col, t_col, p_col in WINDOWS:
+            records.append({
+                "hk_article": row["hk_article"],
+                "hk_security": row["hk_security"],
+                "event_time_basis": row["event_time_basis"],
+                "window_start_min": 1,
+                "window_end_min": window_end,
+                "car": row[car_col],
+                "t_stat": row[t_col],
+                "p_value": row[p_col],
+                "alpha": row["alpha"],
+                "beta": row["beta"],
+                "n_est": row["n_est"],
+                "car_pre": row["car_pre"],
+                "leak_flag": bool(row["leak_flag"]),
+                "model_version": f"market_model_{CODE_VERSION}",
+                "load_ts": row["computed_at"],
+            })
+
+    return pd.DataFrame(records)

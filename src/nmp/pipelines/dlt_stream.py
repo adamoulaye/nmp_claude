@@ -40,7 +40,7 @@ NEWS_SCHEMA = StructType(
         StructField("created_at", StringType()),
         StructField("updated_at", StringType()),
         StructField("symbols", ArrayType(StringType())),
-        StructField("_received_utc", DoubleType()),
+        StructField("_received_utc", StringType()),
     ]
 )
 BAR_SCHEMA = StructType(
@@ -104,7 +104,7 @@ def silver_news():
             F.col("j.symbols").alias("symbols"),
             F.to_timestamp("j.created_at").alias("published_utc"),
             F.to_timestamp("j.updated_at").alias("updated_utc"),
-            F.to_timestamp(F.col("j._received_utc").cast("timestamp")).alias("first_seen_utc"),
+            F.to_timestamp("j._received_utc").alias("first_seen_utc"),
             F.col("ingest_ts").alias("ingested_utc"),
             F.sha2(F.col("payload"), 256).alias("record_hash"),
             F.concat_ws(":", F.col("topic"), F.col("partition"), F.col("offset")).alias("bronze_ref"),

@@ -10,7 +10,7 @@ from ..http_utils import make_session
 
 def _session():
     if not SEC_USER_AGENT:
-        raise RuntimeError("Definir SEC_USER_AGENT dans .env (ex. 'Prenom Nom email@univ.ca')")
+        raise RuntimeError("Definir SEC_USER_AGENT dans .env (ex. 'NMP Research adamlaye06@gmail.com')")
     return make_session({"User-Agent": SEC_USER_AGENT})
 
 
