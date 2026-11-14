@@ -307,3 +307,7 @@ SELECT
   avg(duration_s) AS avg_duration_s
 FROM ops.run_log r
 GROUP BY 1, 2;
+
+CREATE OR REPLACE VIEW gold.v_model_metrics_latest AS
+SELECT * FROM gold.fact_model_metrics
+WHERE logged_utc = (SELECT MAX(logged_utc) FROM gold.fact_model_metrics);
