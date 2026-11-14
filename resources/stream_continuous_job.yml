@@ -1,0 +1,12 @@
+resources:
+  jobs:
+    stream_continuous_job:
+      name: nmp-stream-continuous-${bundle.target}
+
+      continuous:
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: run_stream_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.stream_pipeline.id}
