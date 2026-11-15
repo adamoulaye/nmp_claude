@@ -1,3 +1,5 @@
+USE CATALOG IDENTIFIER(:catalog);
+
 CREATE OR REPLACE VIEW gold.fact_live_news AS
 WITH base AS (
   SELECT e.hk_article, l.hk_security, e.published_utc, e.available_utc, e.session_type,
