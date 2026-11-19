@@ -28,8 +28,14 @@ def main() -> None:
     b.add_argument("--start", required=True, help="Début UTC, ex. 2026-11-06T12:00:00Z")
     b.add_argument("--end", required=True, help="Fin UTC, ex. 2026-11-06T22:00:00Z")
 
-    sub.add_parser("enrich")
-    sub.add_parser("car")
+    for name in ("enrich", "car"):
+        e = sub.add_parser(name)
+        e.add_argument(
+            "--lookback-hours",
+            type=int,
+            default=None,
+            help="Fenetre de rappel en heures (defaut : valeur de la fonction)",
+        )
     sub.add_parser("train")
     sub.add_parser("publish")
     sub.add_parser("health")
@@ -44,6 +50,8 @@ def main() -> None:
         jobs.ingest(a.source, a.lookback_days)
     elif a.cmd == "backfill-bars":
         jobs.backfill_bars(a.start, a.end)
+    elif a.cmd in ("enrich", "car") and a.lookback_hours is not None:
+        getattr(jobs, a.cmd)(lookback_hours=a.lookback_hours)
     else:
         getattr(jobs, a.cmd)()
 
