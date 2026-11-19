@@ -234,58 +234,6 @@ resources:
               - health
 
 
-    # ============================================================
-    # BACKFILL HISTORIQUE MANUEL DES BARRES
-    # ============================================================
-
-    backfill_bars:
-      name: nmp-bars-backfill-${bundle.target}
-      max_concurrent_runs: 1
-
-      environments:
-        - environment_key: serverless_env
-          spec:
-            environment_version: "2"
-            dependencies:
-              - "${workspace.root_path}/artifacts/.internal/nmp-0.1.1-py3-none-any.whl"
-              - "pyarrow>=15"
-
-      tasks:
-
-        - task_key: backfill
-          environment_key: serverless_env
-          python_wheel_task:
-            package_name: nmp
-            entry_point: nmp
-            parameters:
-              - --catalog
-              - "${var.catalog}"
-              - backfill-bars
-              - --start
-              - "2026-08-03T00:00:00Z"
-              - --end
-              - "2026-11-07T00:00:00Z"
-
-        - task_key: silver_bars
-          depends_on:
-            - task_key: backfill
-          sql_task:
-            warehouse_id: "${var.warehouse_id}"
-            file:
-              path: ../sql/01_vault/017_silver_bars_batch.sql
-            parameters:
-              catalog: "${var.catalog}"
-
-        - task_key: vault_bars
-          depends_on:
-            - task_key: silver_bars
-          sql_task:
-            warehouse_id: "${var.warehouse_id}"
-            file:
-              path: ../sql/01_vault/018_vault_bars_batch.sql
-            parameters:
-              catalog: "${var.catalog}"
-
 
     # ============================================================
     # INGESTION QUOTIDIENNE
@@ -358,6 +306,96 @@ resources:
               - ingest
               - --source
               - finnhub_sentiment
+
+        - task_key: yahoo_daily_to_vault
+          depends_on:
+            - task_key: yahoo
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/01_vault/018b_yahoo_daily.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: sec_8k_to_silver
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/01_vault/018c_silver_filings_8k.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: sec_8k_to_vault
+          depends_on:
+            - task_key: sec_8k_to_silver
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/01_vault/018d_vault_filings_8k.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: vault_stream
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/01_vault/019_vault_stream.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: gold_dims
+          depends_on:
+            - task_key: yahoo_daily_to_vault
+            - task_key: sec_8k_to_vault
+            - task_key: vault_stream
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/03_gold/032_gold_dims.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: gold_search_index
+          depends_on:
+            - task_key: gold_dims
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/03_gold/033_gold_search_index.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: gold_live
+          depends_on:
+            - task_key: gold_search_index
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/03_gold/031_gold_live.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: slo_status
+          depends_on:
+            - task_key: gold_live
+          run_if: ALL_DONE
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/04_ops/040_slo_status.sql
+            parameters:
+              catalog: "${var.catalog}"
+
+        - task_key: alerts
+          depends_on:
+            - task_key: slo_status
+          run_if: ALL_DONE
+          sql_task:
+            warehouse_id: "${var.warehouse_id}"
+            file:
+              path: ../sql/04_ops/041_alerts.sql
+            parameters:
+              catalog: "${var.catalog}"
 
 
     # ============================================================
