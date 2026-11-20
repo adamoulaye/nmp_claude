@@ -141,7 +141,7 @@ SELECT
   a.headline,
   a.summary,
   a.url,
-  a.source_name,
+  CASE WHEN lower(a.source_name) = 'benzinga' THEN 'Benzinga' ELSE a.source_name END AS source_name,
   a.bronze_ref,
   a.bronze_record_hash
 
