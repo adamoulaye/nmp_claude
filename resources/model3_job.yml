@@ -13,7 +13,7 @@ resources:
               - "${workspace.root_path}/artifacts/.internal/nmp-0.1.1-py3-none-any.whl"
               - "pyarrow>=15"
               - "scikit-learn>=1.4"
-              - "statsmodels>=0.14,<0.15"
+              - "statsmodels>=0.15"
 
       tasks:
         - task_key: anomalies
