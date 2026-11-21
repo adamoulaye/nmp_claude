@@ -23,7 +23,7 @@ def granger_pair(sentiment: pd.Series, volatility: pd.Series, max_lag: int = 6) 
     for cause, effect in (("sent", "vol"), ("vol", "sent")):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            res = grangercausalitytests(d[[effect, cause]], maxlag=max_lag, verbose=False)
+            res = grangercausalitytests(d[[effect, cause]], maxlag=max_lag)
         for lag, r in res.items():
             p = r[0]["ssr_ftest"][1]
             rows.append({"cause": cause, "effect": effect, "lag": lag, "p_value": p, "p_bonf": min(1.0, p * max_lag)})

@@ -42,6 +42,8 @@ def main() -> None:
             help="Fenetre de rappel en heures (defaut : valeur de la fonction)",
         )
     sub.add_parser("train")
+    sub.add_parser("anomalies")
+    sub.add_parser("granger")
     sub.add_parser("publish")
     sub.add_parser("health")
 
@@ -57,6 +59,10 @@ def main() -> None:
         jobs.backfill_bars(a.start, a.end)
     elif a.cmd == "backfill-finnhub":
         jobs.backfill_finnhub_news(a.start, a.end, a.pause)
+    elif a.cmd in ("anomalies", "granger"):
+        from nmp import jobs_model3
+
+        getattr(jobs_model3, a.cmd)()
     elif a.cmd in ("enrich", "car") and a.lookback_hours is not None:
         getattr(jobs, a.cmd)(lookback_hours=a.lookback_hours)
     else:
