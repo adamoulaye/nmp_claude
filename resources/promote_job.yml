@@ -1,0 +1,50 @@
+resources:
+  jobs:
+    promote:
+      name: nmp-promote-${bundle.target}
+      max_concurrent_runs: 1
+      timeout_seconds: 1800
+
+      parameters:
+        - name: model
+          default: xgboost
+        - name: version
+          default: ""
+
+      environments:
+        - environment_key: promote_env
+          spec:
+            environment_version: "2"
+            dependencies:
+              - "${workspace.root_path}/artifacts/.internal/nmp-0.1.1-py3-none-any.whl"
+              - "mlflow>=2.14"
+
+      tasks:
+        - task_key: promote_dry
+          environment_key: promote_env
+          python_wheel_task:
+            package_name: nmp
+            entry_point: nmp
+            parameters:
+              - --catalog
+              - "${var.catalog}"
+              - promote
+              - --model
+              - "{{job.parameters.model}}"
+              - --version
+              - "{{job.parameters.version}}"
+              - --dry-run
+
+        - task_key: promote
+          environment_key: promote_env
+          python_wheel_task:
+            package_name: nmp
+            entry_point: nmp
+            parameters:
+              - --catalog
+              - "${var.catalog}"
+              - promote
+              - --model
+              - "{{job.parameters.model}}"
+              - --version
+              - "{{job.parameters.version}}"
