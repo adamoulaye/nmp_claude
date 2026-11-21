@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from nmp.jobs_model3 import anomaly_rows, hourly_series
+from nmp.jobs_model3 import anomaly_rows, hourly_series, news_coverage
 
 
 def _bars(n=3000, seed=1):
@@ -63,3 +63,27 @@ def test_granger_pair_runs_and_detects_sentiment_leading_volatility():
     assert len(res) == 6 and set(res["cause"]) == {"sent", "vol"}
     best = res[(res["cause"] == "sent") & (res["effect"] == "vol")]["p_bonf"].min()
     assert best < 0.01
+
+
+def test_news_coverage_window_is_minus15_plus5():
+    idx = pd.DatetimeIndex(pd.date_range("2026-10-05 14:00", periods=40, freq="min", tz="UTC"))
+    cov = news_coverage(idx, pd.Series([pd.Timestamp("2026-10-05 14:20", tz="UTC")]))
+    covered = idx[cov]
+    assert covered.min() == pd.Timestamp("2026-10-05 14:15", tz="UTC")
+    assert covered.max() == pd.Timestamp("2026-10-05 14:35", tz="UTC")
+
+
+def test_baseline_stats_reports_base_rate_and_lifts():
+    b = _bars()
+    t = b["bar_ts"].iloc[2500]
+    b.loc[2500:, "close"] *= 1.02
+    b.loc[2500, ["high", "volume"]] = [b.loc[2500, "close"] * 1.02, 50000.0]
+    news = pd.DataFrame({"hk_security": ["A"], "published_utc": [t - pd.Timedelta("2min")]})
+    stats = []
+    anomaly_rows(b, news, "v1", stats=stats)
+    assert len(stats) == 1
+    s = stats[0]
+    assert s["hk_security"] == "A" and s["model_version"] == "v1"
+    assert 0.0 <= s["base_rate_news"] < 0.1 and s["n_anomalies"] >= 1
+    assert s["explained_rate_iforest"] > s["base_rate_news"]
+    assert 0.0 <= s["overlap_zscore"] <= 1.0

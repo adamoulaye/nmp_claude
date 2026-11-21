@@ -22,7 +22,49 @@ def _spark():
     return SparkSession.builder.getOrCreate()
 
 
-def anomaly_rows(bars: pd.DataFrame, news: pd.DataFrame, version: str, min_bars: int = MIN_BARS) -> pd.DataFrame:
+def news_coverage(index: pd.DatetimeIndex, news_ts: pd.Series, news_window: tuple[str, str] = ("5min", "15min")) -> np.ndarray:
+    """Vrai si une nouvelle a ete publiee entre -15 min et +5 min de chaque horodatage (meme regle que detect)."""
+    nts = pd.DatetimeIndex(pd.to_datetime(news_ts, utc=True)).sort_values()
+    if len(nts) == 0:
+        return np.zeros(len(index), bool)
+    after, before = pd.Timedelta(news_window[0]), pd.Timedelta(news_window[1])
+    idx = nts.searchsorted(index - before)
+    return np.asarray((idx < len(nts)) & (nts[np.clip(idx, 0, len(nts) - 1)] <= index + after))
+
+
+def baseline_stats(hk: str, res: pd.DataFrame, news_ts: pd.Series, version: str) -> dict:
+    """Lignes de base du modele 3 pour un titre.
+
+    base_rate_news : part de TOUTES les barres de test qui ont une nouvelle a proximite (hasard).
+    explained_rate_iforest : part des anomalies de l'IsolationForest qui en ont une.
+    explained_rate_zscore : meme mesure pour un detecteur de seuil (memes effectifs, plus grands z robustes).
+    """
+    cov = news_coverage(res.index, news_ts)
+    n_an = int(res["is_anomaly"].sum())
+    out = {
+        "hk_security": hk,
+        "model_version": version,
+        "n_test_bars": int(len(res)),
+        "n_anomalies": n_an,
+        "base_rate_news": float(cov.mean()) if len(res) else None,
+        "explained_rate_iforest": None,
+        "explained_rate_zscore": None,
+        "overlap_zscore": None,
+    }
+    if n_an:
+        score = res[["z_ret", "z_vol", "z_range"]].abs().max(axis=1)
+        top = score.nlargest(n_an).index
+        pos = res.index.get_indexer(top)
+        flagged = set(res.index[res["is_anomaly"].to_numpy()])
+        out["explained_rate_iforest"] = float(res["explained_by_news"].sum() / n_an)
+        out["explained_rate_zscore"] = float(cov[pos].mean())
+        out["overlap_zscore"] = float(len(flagged & set(top)) / n_an)
+    return out
+
+
+def anomaly_rows(
+    bars: pd.DataFrame, news: pd.DataFrame, version: str, min_bars: int = MIN_BARS, stats: list | None = None
+) -> pd.DataFrame:
     """bars : hk_security, bar_ts, close, high, low, volume. news : hk_security, published_utc.
 
     Retourne uniquement les barres anormales (expliquées ou non par une nouvelle).
@@ -39,7 +81,10 @@ def anomaly_rows(bars: pd.DataFrame, news: pd.DataFrame, version: str, min_bars:
         if len(g) < min_bars:
             log.warning("Anomalies : %s ignoré (%d barres < %d)", hk, len(g), min_bars)
             continue
-        res = detect(g, n.loc[n["hk_security"] == hk, "published_utc"])
+        ts = n.loc[n["hk_security"] == hk, "published_utc"]
+        res = detect(g, ts)
+        if stats is not None:
+            stats.append(baseline_stats(hk, res, ts, version))
         an = res[res["is_anomaly"]]
         if an.empty:
             continue
@@ -81,7 +126,7 @@ def hourly_series(bars: pd.DataFrame, news: pd.DataFrame) -> tuple[pd.Series, pd
 def anomalies() -> None:
     from nmp.common.lakehouse import merge_insert_only
     from nmp.common.runlog import run_log
-    from pyspark.sql.types import DoubleType, StringType, StructField, StructType, TimestampType
+    from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType, TimestampType
 
     s = get_settings()
     cat = s.catalog
@@ -101,7 +146,8 @@ def anomalies() -> None:
                 GROUP BY l.hk_security, a.hk_article"""
         ).toPandas()
         st.received = len(bars)
-        rows = anomaly_rows(bars, news, version)
+        stats: list = []
+        rows = anomaly_rows(bars, news, version, stats=stats)
         st.kept = len(rows)
         if len(rows):
             schema = StructType(
@@ -129,6 +175,45 @@ def anomalies() -> None:
                 FROM {cat}.business_vault.bv_anomaly a
                 JOIN {cat}.gold.dim_security d ON a.hk_security = d.hk_security
                 WHERE a.model_version = (SELECT max(model_version) FROM {cat}.business_vault.bv_anomaly)"""
+        )
+        spark.sql(
+            f"""CREATE TABLE IF NOT EXISTS {cat}.gold.fact_anomaly_baseline (
+                  hk_security STRING, model_version STRING, n_test_bars INT, n_anomalies INT,
+                  base_rate_news DOUBLE, explained_rate_iforest DOUBLE, explained_rate_zscore DOUBLE,
+                  overlap_zscore DOUBLE, computed_utc TIMESTAMP)"""
+        )
+        if stats:
+            now = datetime.now(timezone.utc)
+            bschema = StructType(
+                [
+                    StructField("hk_security", StringType(), True),
+                    StructField("model_version", StringType(), True),
+                    StructField("n_test_bars", IntegerType(), True),
+                    StructField("n_anomalies", IntegerType(), True),
+                    StructField("base_rate_news", DoubleType(), True),
+                    StructField("explained_rate_iforest", DoubleType(), True),
+                    StructField("explained_rate_zscore", DoubleType(), True),
+                    StructField("overlap_zscore", DoubleType(), True),
+                    StructField("computed_utc", TimestampType(), True),
+                ]
+            )
+            brecs = [
+                (
+                    d["hk_security"], d["model_version"], d["n_test_bars"], d["n_anomalies"],
+                    d["base_rate_news"], d["explained_rate_iforest"], d["explained_rate_zscore"],
+                    d["overlap_zscore"], now,
+                )
+                for d in stats
+            ]
+            spark.createDataFrame(brecs, schema=bschema).write.mode("append").saveAsTable(
+                f"{cat}.gold.fact_anomaly_baseline"
+            )
+        spark.sql(
+            f"""CREATE OR REPLACE VIEW {cat}.gold.v_anomaly_baseline_latest AS
+                SELECT d.symbol, d.sector, b.*
+                FROM {cat}.gold.fact_anomaly_baseline b
+                JOIN {cat}.gold.dim_security d ON b.hk_security = d.hk_security
+                WHERE b.model_version = (SELECT max(model_version) FROM {cat}.gold.fact_anomaly_baseline)"""
         )
         st.message = f"{version} : {len(rows)} anomalies sur {len(bars)} barres"
         log.info(st.message)
