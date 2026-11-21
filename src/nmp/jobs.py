@@ -26,6 +26,98 @@ def ingest(source: str, lookback_days: int = 3) -> None:
     run_source(_spark(), REGISTRY[source](s), default_start=start)
 
 
+def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
+    """Recharge les actualites Finnhub jour par jour (dates AAAA-MM-JJ incluses).
+
+    Un appel par titre et par jour evite le plafond d'environ 250 articles par appel.
+    N'ecrit que dans Bronze (insertion sans doublon) et ne modifie pas le watermark.
+    """
+    import json
+    import time
+    from collections import Counter
+    from datetime import date
+
+    from nmp.common.lakehouse import merge_insert_only
+    from nmp.common.runlog import run_log
+    from nmp.common.retry import SchemaDrift
+    from nmp.ingestion.base import payload_hash, schema_fingerprint
+    from nmp.ingestion.sources import FinnhubNews
+
+    from pyspark.sql.types import StringType, StructField, StructType, TimestampType
+
+    d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
+    if d1 < d0:
+        raise ValueError("--end doit etre posterieur ou egal a --start.")
+
+    s = get_settings()
+    spark = _spark()
+    src = FinnhubNews(s)
+    cat = s.catalog
+    schema = StructType([
+        StructField("source", StringType(), True),
+        StructField("record_id", StringType(), True),
+        StructField("symbol", StringType(), True),
+        StructField("published_utc", TimestampType(), True),
+        StructField("updated_utc", TimestampType(), True),
+        StructField("ingested_utc", TimestampType(), True),
+        StructField("payload", StringType(), True),
+        StructField("record_hash", StringType(), True),
+        StructField("schema_fp", StringType(), True),
+    ])
+
+    with run_log(spark, cat, "backfill", src.name) as st:
+        total_kept = total_bad = total_recv = 0
+        d = d0
+        while d <= d1:
+            day = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+            good, bad, per_symbol = [], [], Counter()
+            for raw in src.fetch(day, day):
+                total_recv += 1
+                try:
+                    src.check_schema(raw)
+                    rec = src.to_record(raw)
+                except SchemaDrift:
+                    raise
+                except Exception as exc:
+                    bad.append({"source": src.name, "raw": json.dumps(raw, default=str)[:20000], "error": str(exc)[:500]})
+                    continue
+                if rec is None or rec.record_id is None or rec.published_utc is None:
+                    bad.append({"source": src.name, "raw": json.dumps(raw, default=str)[:20000], "error": "id/horodatage manquant"})
+                    continue
+                per_symbol[rec.symbol] += 1
+                good.append({
+                    "source": rec.source,
+                    "record_id": str(rec.record_id),
+                    "symbol": rec.symbol,
+                    "published_utc": rec.published_utc,
+                    "updated_utc": rec.updated_utc,
+                    "ingested_utc": datetime.now(timezone.utc),
+                    "payload": json.dumps(rec.payload, default=str),
+                    "record_hash": payload_hash(rec.payload),
+                    "schema_fp": schema_fingerprint(rec.payload),
+                })
+            capped = sorted(k for k, v in per_symbol.items() if v >= 240)
+            if capped:
+                log.warning("Finnhub %s : plafond probablement atteint pour %s", d.isoformat(), capped)
+            if good:
+                merge_insert_only(
+                    spark,
+                    spark.createDataFrame(good, schema=schema),
+                    f"{cat}.{src.bronze_table}",
+                    ["source", "record_id", "record_hash"],
+                )
+            if bad:
+                spark.createDataFrame(bad).write.mode("append").saveAsTable(f"{cat}.bronze.rejects")
+            total_kept += len(good)
+            total_bad += len(bad)
+            log.info("Finnhub %s : %d articles, %d rejetes", d.isoformat(), len(good), len(bad))
+            d += timedelta(days=1)
+            if d <= d1:
+                time.sleep(pause)
+        st.received, st.kept, st.rejected = total_recv, total_kept, total_bad
+        st.message = f"Backfill Finnhub {d0.isoformat()} -> {d1.isoformat()} ; {total_kept} gardes, {total_bad} rejetes"
+
+
 def backfill_bars(start: str, end: str) -> None:
     """Recharge une période historique de barres sans modifier le watermark."""
     import json

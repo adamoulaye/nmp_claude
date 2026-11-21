@@ -28,6 +28,11 @@ def main() -> None:
     b.add_argument("--start", required=True, help="Début UTC, ex. 2026-11-06T12:00:00Z")
     b.add_argument("--end", required=True, help="Fin UTC, ex. 2026-11-06T22:00:00Z")
 
+    f = sub.add_parser("backfill-finnhub")
+    f.add_argument("--start", required=True, help="Premier jour, ex. 2026-11-16")
+    f.add_argument("--end", required=True, help="Dernier jour inclus, ex. 2026-11-19")
+    f.add_argument("--pause", type=float, default=45.0, help="Secondes entre deux jours (limite de debit)")
+
     for name in ("enrich", "car"):
         e = sub.add_parser(name)
         e.add_argument(
@@ -50,6 +55,8 @@ def main() -> None:
         jobs.ingest(a.source, a.lookback_days)
     elif a.cmd == "backfill-bars":
         jobs.backfill_bars(a.start, a.end)
+    elif a.cmd == "backfill-finnhub":
+        jobs.backfill_finnhub_news(a.start, a.end, a.pause)
     elif a.cmd in ("enrich", "car") and a.lookback_hours is not None:
         getattr(jobs, a.cmd)(lookback_hours=a.lookback_hours)
     else:
