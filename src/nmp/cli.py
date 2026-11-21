@@ -44,6 +44,12 @@ def main() -> None:
     sub.add_parser("train")
     sub.add_parser("anomalies")
     sub.add_parser("granger")
+    pr = sub.add_parser("promote")
+    pr.add_argument("--model", required=True, choices=["xgboost", "random_forest"])
+    pr.add_argument("--version", required=True)
+    pr.add_argument("--metric", default="holdout_macro_f1")
+    pr.add_argument("--margin", type=float, default=0.01)
+    pr.add_argument("--dry-run", action="store_true")
     sub.add_parser("publish")
     sub.add_parser("health")
 
@@ -59,6 +65,15 @@ def main() -> None:
         jobs.backfill_bars(a.start, a.end)
     elif a.cmd == "backfill-finnhub":
         jobs.backfill_finnhub_news(a.start, a.end, a.pause)
+    elif a.cmd == "promote":
+        import mlflow
+
+        from nmp.ml.registry import promote_if_better
+
+        mlflow.set_registry_uri("databricks-uc")
+        promote_if_better(
+            f"{a.catalog}.gold.event_magnitude_{a.model}", a.version, a.metric, a.margin, dry_run=a.dry_run
+        )
     elif a.cmd in ("anomalies", "granger"):
         from nmp import jobs_model3
 
