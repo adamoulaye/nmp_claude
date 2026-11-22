@@ -136,9 +136,7 @@ def anomalies() -> None:
     computed = datetime.now(timezone.utc)
     version = "iforest_" + computed.strftime("%Y%m%d%H%M")
     with run_log(spark, cat, "model", "anomalies") as st:
-        bars = spark.sql(
-            f"SELECT hk_security, bar_ts, close, high, low, volume FROM {cat}.vault.nhsat_bar_1m"
-        ).toPandas()
+        bars = spark.sql(f"SELECT hk_security, bar_ts, close, high, low, volume FROM {cat}.vault.nhsat_bar_1m").toPandas()
         news = spark.sql(
             f"""SELECT l.hk_security, min(a.published_utc) AS published_utc
                 FROM {cat}.vault.sat_article_content a
@@ -203,15 +201,19 @@ def anomalies() -> None:
             )
             brecs = [
                 (
-                    d["hk_security"], d["model_version"], d["n_test_bars"], d["n_anomalies"],
-                    d["base_rate_news"], d["explained_rate_iforest"], d["explained_rate_zscore"],
-                    d["overlap_zscore"], now,
+                    d["hk_security"],
+                    d["model_version"],
+                    d["n_test_bars"],
+                    d["n_anomalies"],
+                    d["base_rate_news"],
+                    d["explained_rate_iforest"],
+                    d["explained_rate_zscore"],
+                    d["overlap_zscore"],
+                    now,
                 )
                 for d in stats
             ]
-            spark.createDataFrame(brecs, schema=bschema).write.mode("append").saveAsTable(
-                f"{cat}.gold.fact_anomaly_baseline"
-            )
+            spark.createDataFrame(brecs, schema=bschema).write.mode("append").saveAsTable(f"{cat}.gold.fact_anomaly_baseline")
         spark.sql(
             f"""CREATE OR REPLACE VIEW {cat}.gold.v_anomaly_baseline_latest AS
                 SELECT d.symbol, d.sector, b.*

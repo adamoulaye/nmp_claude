@@ -27,6 +27,7 @@ log = logging.getLogger("nmp.streamer")
 # KAFKA PRODUCER
 # ============================================================
 
+
 def _producer(s):
     from confluent_kafka import Producer
 
@@ -41,12 +42,14 @@ def _producer(s):
 
     # Azure Event Hubs (API Kafka)
     if s.kafka_password:
-        conf.update({
-            "security.protocol": "SASL_SSL",
-            "sasl.mechanism": "PLAIN",
-            "sasl.username": "$ConnectionString",
-            "sasl.password": s.kafka_password,
-        })
+        conf.update(
+            {
+                "security.protocol": "SASL_SSL",
+                "sasl.mechanism": "PLAIN",
+                "sasl.username": "$ConnectionString",
+                "sasl.password": s.kafka_password,
+            }
+        )
 
     return Producer(conf)
 
@@ -54,6 +57,7 @@ def _producer(s):
 # ============================================================
 # SERIALIZATION
 # ============================================================
+
 
 def _to_dict(msg) -> dict:
 
@@ -72,6 +76,7 @@ def _to_dict(msg) -> dict:
 # ============================================================
 # KAFKA DELIVERY CALLBACK
 # ============================================================
+
 
 def _delivery_report(err, message):
 
@@ -94,6 +99,7 @@ def _delivery_report(err, message):
 # ============================================================
 # STREAM PROCESSOR
 # ============================================================
+
 
 def run(kind: str) -> None:
 
@@ -123,22 +129,16 @@ def run(kind: str) -> None:
         payload = None
 
         try:
-
             # Conversion message Alpaca -> dict
             d = _to_dict(msg)
 
             log.info("MESSAGE RECU : %s", d)
 
             # Horodatage UTC de première réception
-            d["_received_utc"] = datetime.now(
-                timezone.utc
-            ).isoformat()
+            d["_received_utc"] = datetime.now(timezone.utc).isoformat()
 
             # Clé d'idempotence
-            key = str(
-                d.get("id")
-                or f"{d.get('symbol')}:{d.get('timestamp')}"
-            )
+            key = str(d.get("id") or f"{d.get('symbol')}:{d.get('timestamp')}")
 
             # Sérialisation JSON
             payload = json.dumps(
@@ -165,17 +165,13 @@ def run(kind: str) -> None:
             )
 
         except BufferError:
-
-            log.warning(
-                "Buffer Kafka saturé : attente de capacité disponible"
-            )
+            log.warning("Buffer Kafka saturé : attente de capacité disponible")
 
             # Attendre la libération du buffer
             prod.poll(1)
 
             # Nouvelle tentative
             try:
-
                 prod.produce(
                     topic,
                     key=key.encode("utf-8"),
@@ -186,13 +182,9 @@ def run(kind: str) -> None:
                 prod.poll(0)
 
             except Exception:
-
-                log.exception(
-                    "Échec nouvelle tentative Kafka"
-                )
+                log.exception("Échec nouvelle tentative Kafka")
 
         except Exception:
-
             log.exception(
                 "Erreur traitement message %s",
                 kind,
@@ -205,17 +197,14 @@ def run(kind: str) -> None:
     backoff = 1
 
     while True:
-
         st = None
 
         try:
-
             # =================================================
             # NEWS STREAM
             # =================================================
 
             if kind == "news":
-
                 from alpaca.data.live import NewsDataStream
 
                 st = NewsDataStream(
@@ -233,7 +222,6 @@ def run(kind: str) -> None:
             # =================================================
 
             else:
-
                 from alpaca.data.enums import DataFeed
                 from alpaca.data.live import StockDataStream
 
@@ -265,15 +253,11 @@ def run(kind: str) -> None:
             )
 
         except KeyboardInterrupt:
-
-            log.info(
-                "Arrêt demandé par utilisateur"
-            )
+            log.info("Arrêt demandé par utilisateur")
 
             break
 
         except Exception:
-
             log.exception(
                 "Flux %s interrompu, reprise dans %ss",
                 kind,
@@ -281,15 +265,12 @@ def run(kind: str) -> None:
             )
 
         finally:
-
             # Arrêt du flux Alpaca
             if st is not None:
-
                 try:
                     st.stop()
 
                 except Exception:
-
                     log.debug(
                         "Arrêt du flux déjà effectué",
                         exc_info=True,
@@ -327,24 +308,16 @@ def run(kind: str) -> None:
 # CLI ENTRYPOINT
 # ============================================================
 
+
 def main() -> None:
 
     logging.basicConfig(
         level=logging.INFO,
-        format=(
-            "%(asctime)s %(levelname)s "
-            "%(name)s %(message)s"
-        ),
+        format=("%(asctime)s %(levelname)s %(name)s %(message)s"),
     )
 
-    if (
-        len(sys.argv) != 2
-        or sys.argv[1] not in ("news", "bars")
-    ):
-
-        sys.exit(
-            "usage: nmp-stream news|bars"
-        )
+    if len(sys.argv) != 2 or sys.argv[1] not in ("news", "bars"):
+        sys.exit("usage: nmp-stream news|bars")
 
     run(sys.argv[1])
 

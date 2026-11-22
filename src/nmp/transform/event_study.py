@@ -1,4 +1,3 @@
-
 """Etude d'evenements intraday avec modele de marche.
 
 Convention :
@@ -46,15 +45,11 @@ def estimate_market_model(
     )
 
     if len(d) < min_obs:
-        raise ValueError(
-            f"Fenetre d'estimation trop courte : {len(d)} observations"
-        )
+        raise ValueError(f"Fenetre d'estimation trop courte : {len(d)} observations")
 
     res = stats.linregress(d["m"], d["s"])
 
-    resid = d["s"] - (
-        res.intercept + res.slope * d["m"]
-    )
+    resid = d["s"] - (res.intercept + res.slope * d["m"])
 
     sigma = float(resid.std(ddof=2))
 
@@ -127,9 +122,7 @@ def compute_event(
         missing = required.difference(df.columns)
 
         if missing:
-            raise ValueError(
-                f"Colonnes manquantes pour {ticker} : {sorted(missing)}"
-            )
+            raise ValueError(f"Colonnes manquantes pour {ticker} : {sorted(missing)}")
 
         out = df.copy()
 
@@ -169,15 +162,11 @@ def compute_event(
     required_end = m0 + post * MIN
 
     if cs.index.max() < required_end:
-        raise IncompleteEventError(
-            f"Fenetre incomplete : titre, derniere barre "
-            f"{cs.index.max()}, fin attendue {required_end}"
-        )
+        raise IncompleteEventError(f"Fenetre incomplete : titre, derniere barre {cs.index.max()}, fin attendue {required_end}")
 
     if cm.index.max() < required_end:
         raise IncompleteEventError(
-            f"Fenetre incomplete : benchmark, derniere barre "
-            f"{cm.index.max()}, fin attendue {required_end}"
+            f"Fenetre incomplete : benchmark, derniere barre {cm.index.max()}, fin attendue {required_end}"
         )
 
     # Estimation strictement anterieure a la fenetre pre-evenement.
@@ -197,13 +186,7 @@ def compute_event(
         post,
     )
 
-    w["ar"] = (
-        w["r_stock"]
-        - (
-            mm["alpha"]
-            + mm["beta"] * w["r_mkt"]
-        )
-    )
+    w["ar"] = w["r_stock"] - (mm["alpha"] + mm["beta"] * w["r_mkt"])
 
     # Exclusion de la minute contenant la publication.
     w.loc[w["k"] == 0, "ar"] = np.nan
@@ -223,10 +206,7 @@ def compute_event(
         actual = int(selected.notna().sum())
 
         if actual != expected:
-            raise IncompleteEventError(
-                f"Fenetre incomplete ({label}) : "
-                f"{actual}/{expected} rendements valides"
-            )
+            raise IncompleteEventError(f"Fenetre incomplete ({label}) : {actual}/{expected} rendements valides")
 
     # Verification de la periode anterieure.
     pre_returns = w.loc[
@@ -237,10 +217,7 @@ def compute_event(
     actual_pre = int(pre_returns.notna().sum())
 
     if actual_pre != pre:
-        raise IncompleteEventError(
-            f"Fenetre pre-evenement incomplete : "
-            f"{actual_pre}/{pre} rendements valides"
-        )
+        raise IncompleteEventError(f"Fenetre pre-evenement incomplete : {actual_pre}/{pre} rendements valides")
 
     def car(lo, hi):
         selected = w.loc[
@@ -254,7 +231,8 @@ def compute_event(
         t = c / (mm["sigma"] * np.sqrt(n))
 
         p = float(
-            2 * stats.t.sf(
+            2
+            * stats.t.sf(
                 abs(t),
                 mm["n_est"] - 2,
             )
@@ -268,21 +246,11 @@ def compute_event(
 
     vol = stock["volume"]
 
-    v_est = (
-        vol.loc[:est_end]
-        .tail(est_minutes)
-        .mean()
-    )
+    v_est = vol.loc[:est_end].tail(est_minutes).mean()
 
-    v_15 = vol.loc[
-        m0 + MIN:m0 + 15 * MIN
-    ].mean()
+    v_15 = vol.loc[m0 + MIN : m0 + 15 * MIN].mean()
 
-    w["car"] = (
-        w["ar"]
-        .where(w["k"] >= 1)
-        .cumsum()
-    )
+    w["car"] = w["ar"].where(w["k"] >= 1).cumsum()
 
     summary = {
         "m0_utc": m0,
@@ -302,13 +270,7 @@ def compute_event(
         "n_0_60": n60,
         "t_0_60": t60,
         "p_0_60": p60,
-        "rel_volume_15": (
-            float(v_15 / v_est)
-            if pd.notna(v_est)
-            and pd.notna(v_15)
-            and v_est > 0
-            else np.nan
-        ),
+        "rel_volume_15": (float(v_15 / v_est) if pd.notna(v_est) and pd.notna(v_15) and v_est > 0 else np.nan),
         "leak_flag": bool(pre_p < 0.05),
     }
 
@@ -330,11 +292,7 @@ def cross_sectional_test(cars) -> dict:
 
     t, p = stats.ttest_1samp(s, 0.0)
 
-    wp = (
-        stats.wilcoxon(s).pvalue
-        if len(s) > 5 and (s != 0).any()
-        else np.nan
-    )
+    wp = stats.wilcoxon(s).pvalue if len(s) > 5 and (s != 0).any() else np.nan
 
     return {
         "n": len(s),

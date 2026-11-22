@@ -24,6 +24,7 @@ def _as_utc(value: datetime) -> datetime:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
 
+
 @dataclass
 class Record:
     source: str
@@ -117,17 +118,19 @@ def run_source(spark, src: BaseSource, *, default_start: datetime, until: dateti
                 TimestampType,
             )
 
-            good_schema = StructType([
-                StructField("source", StringType(), True),
-                StructField("record_id", StringType(), True),
-                StructField("symbol", StringType(), True),
-                StructField("published_utc", TimestampType(), True),
-                StructField("updated_utc", TimestampType(), True),
-                StructField("ingested_utc", TimestampType(), True),
-                StructField("payload", StringType(), True),
-                StructField("record_hash", StringType(), True),
-                StructField("schema_fp", StringType(), True),
-            ])
+            good_schema = StructType(
+                [
+                    StructField("source", StringType(), True),
+                    StructField("record_id", StringType(), True),
+                    StructField("symbol", StringType(), True),
+                    StructField("published_utc", TimestampType(), True),
+                    StructField("updated_utc", TimestampType(), True),
+                    StructField("ingested_utc", TimestampType(), True),
+                    StructField("payload", StringType(), True),
+                    StructField("record_hash", StringType(), True),
+                    StructField("schema_fp", StringType(), True),
+                ]
+            )
 
             merge_insert_only(
                 spark,

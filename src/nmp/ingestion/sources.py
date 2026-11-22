@@ -218,7 +218,6 @@ class RedditMemes(BaseSource):
         return Record(self.name, raw["id"], None, _dt(pd.to_datetime(raw["created_utc"], unit="s", utc=True)), None, raw)
 
 
-
 class AlpacaBars1m(BaseSource):
     """Barres Alpaca 1 minute, brutes et traçables."""
 

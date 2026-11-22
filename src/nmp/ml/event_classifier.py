@@ -1,4 +1,3 @@
-
 """Modèle 2b : classification de l'ampleur des réactions boursières."""
 
 from __future__ import annotations
@@ -44,11 +43,7 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     """Crée les variables dérivées à partir des colonnes sources."""
     d = df.copy()
 
-    d["hour_bucket"] = (
-        pd.to_datetime(d["published_utc"], utc=True)
-        .dt.tz_convert("America/New_York")
-        .dt.hour.astype(str)
-    )
+    d["hour_bucket"] = pd.to_datetime(d["published_utc"], utc=True).dt.tz_convert("America/New_York").dt.hour.astype(str)
 
     d["is_first_i"] = d["is_first"].astype(int)
 
@@ -80,51 +75,54 @@ def build_models(seed: int = 42):
 
     return {
         "baseline_prior": DummyClassifier(strategy="prior"),
-
-        "baseline_logreg": Pipeline([
-            ("p", prep),
-            (
-                "m",
-                LogisticRegression(
-                    max_iter=1000,
-                    class_weight="balanced",
+        "baseline_logreg": Pipeline(
+            [
+                ("p", prep),
+                (
+                    "m",
+                    LogisticRegression(
+                        max_iter=1000,
+                        class_weight="balanced",
+                    ),
                 ),
-            ),
-        ]),
-
-        "xgboost": Pipeline([
-            ("p", prep),
-            (
-                "m",
-                XGBClassifier(
-                    n_estimators=400,
-                    max_depth=5,
-                    learning_rate=0.05,
-                    subsample=0.8,
-                    colsample_bytree=0.8,
-                    objective="multi:softprob",
-                    num_class=3,
-                    eval_metric="mlogloss",
-                    tree_method="hist",
-                    random_state=seed,
-                    n_jobs=-1,
+            ]
+        ),
+        "xgboost": Pipeline(
+            [
+                ("p", prep),
+                (
+                    "m",
+                    XGBClassifier(
+                        n_estimators=400,
+                        max_depth=5,
+                        learning_rate=0.05,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        objective="multi:softprob",
+                        num_class=3,
+                        eval_metric="mlogloss",
+                        tree_method="hist",
+                        random_state=seed,
+                        n_jobs=-1,
+                    ),
                 ),
-            ),
-        ]),
-
-        "random_forest": Pipeline([
-            ("p", prep),
-            (
-                "m",
-                RandomForestClassifier(
-                    n_estimators=400,
-                    min_samples_leaf=5,
-                    class_weight="balanced_subsample",
-                    n_jobs=-1,
-                    random_state=seed,
+            ]
+        ),
+        "random_forest": Pipeline(
+            [
+                ("p", prep),
+                (
+                    "m",
+                    RandomForestClassifier(
+                        n_estimators=400,
+                        min_samples_leaf=5,
+                        class_weight="balanced_subsample",
+                        n_jobs=-1,
+                        random_state=seed,
+                    ),
                 ),
-            ),
-        ]),
+            ]
+        ),
     }
 
 
@@ -165,30 +163,19 @@ def train_and_log(
     missing = [c for c in required if c not in df.columns]
 
     if missing:
-        raise ValueError(
-            f"Colonnes manquantes dans gold.v_training_set : {missing}"
-        )
+        raise ValueError(f"Colonnes manquantes dans gold.v_training_set : {missing}")
 
     if not 0 < holdout < 1:
         raise ValueError("holdout doit être compris entre 0 et 1.")
 
-    d = prepare(
-        df.sort_values("published_utc").reset_index(drop=True)
-    )
+    d = prepare(df.sort_values("published_utc").reset_index(drop=True))
 
     d = d.replace([np.inf, -np.inf], np.nan)
 
-    d = d.dropna(
-        subset=["published_utc", "abs_car"]
-        + CAT_FEATURES
-        + NUM_FEATURES
-    )
+    d = d.dropna(subset=["published_utc", "abs_car"] + CAT_FEATURES + NUM_FEATURES)
 
     if len(d) < 15:
-        raise ValueError(
-            f"Échantillon insuffisant : {len(d)} observations. "
-            "Il faut au moins 15 observations."
-        )
+        raise ValueError(f"Échantillon insuffisant : {len(d)} observations. Il faut au moins 15 observations.")
 
     cut = int(len(d) * (1 - holdout))
 
@@ -209,12 +196,7 @@ def train_and_log(
     train_classes = sorted(tr["magnitude"].unique().tolist())
 
     if train_classes != [0, 1, 2]:
-        distribution = (
-            tr["magnitude"]
-            .value_counts()
-            .sort_index()
-            .to_dict()
-        )
+        distribution = tr["magnitude"].value_counts().sort_index().to_dict()
         raise ValueError(
             "Les trois classes (0, 1, 2) ne sont pas présentes "
             f"dans le jeu d'entraînement. Distribution : {distribution}. "
@@ -294,15 +276,17 @@ def train_and_log(
                 metrics["cv_macro_f1_mean"] = float(np.mean(cv))
                 metrics["cv_macro_f1_std"] = float(np.std(cv))
 
-            mlflow.log_params({
-                "model": name,
-                "n_train": len(tr),
-                "n_test": len(te),
-                "n_total": len(d),
-                "n_splits": n_splits if cv else 0,
-                "gap": 50 if cv else 0,
-                "validation": "chronological_holdout",
-            })
+            mlflow.log_params(
+                {
+                    "model": name,
+                    "n_train": len(tr),
+                    "n_test": len(te),
+                    "n_total": len(d),
+                    "n_splits": n_splits if cv else 0,
+                    "gap": 50 if cv else 0,
+                    "validation": "chronological_holdout",
+                }
+            )
 
             mlflow.log_metrics(metrics)
 

@@ -71,9 +71,7 @@ def main() -> None:
         from nmp.ml.registry import promote_if_better
 
         mlflow.set_registry_uri("databricks-uc")
-        promote_if_better(
-            f"{a.catalog}.gold.event_magnitude_{a.model}", a.version, a.metric, a.margin, dry_run=a.dry_run
-        )
+        promote_if_better(f"{a.catalog}.gold.event_magnitude_{a.model}", a.version, a.metric, a.margin, dry_run=a.dry_run)
     elif a.cmd in ("anomalies", "granger"):
         from nmp import jobs_model3
 

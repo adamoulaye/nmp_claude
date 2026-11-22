@@ -1,4 +1,3 @@
-
 """Configuration centralisée : variables d'environnement ou secrets Databricks."""
 
 from __future__ import annotations
@@ -11,13 +10,34 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEFAULT_TICKERS = (
-    "AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META",
-    "ORCL", "AVGO", "AMD", "QCOM", "MU", "INTC",
-    "DELL", "IBM", "CSCO", "PANW", "CRM", "SHOP",
-    "TSLA", "UBER", "MCD",
-    "GSK", "ZTS",
-    "MMM", "ETN", "PWR",
-    "BX", "APO",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "NVDA",
+    "GOOGL",
+    "META",
+    "ORCL",
+    "AVGO",
+    "AMD",
+    "QCOM",
+    "MU",
+    "INTC",
+    "DELL",
+    "IBM",
+    "CSCO",
+    "PANW",
+    "CRM",
+    "SHOP",
+    "TSLA",
+    "UBER",
+    "MCD",
+    "GSK",
+    "ZTS",
+    "MMM",
+    "ETN",
+    "PWR",
+    "BX",
+    "APO",
 )
 
 
@@ -31,9 +51,7 @@ def _secret(name: str, default: str = "") -> str:
         from pyspark.dbutils import DBUtils
         from pyspark.sql import SparkSession
 
-        return DBUtils(
-            SparkSession.builder.getOrCreate()
-        ).secrets.get("nmp", name)
+        return DBUtils(SparkSession.builder.getOrCreate()).secrets.get("nmp", name)
 
     except Exception:
         return default
@@ -43,13 +61,7 @@ def _tickers() -> tuple[str, ...]:
     """Lit les titres suivis depuis TICKERS ou utilise l'univers par défaut."""
     raw = os.getenv("TICKERS", ",".join(DEFAULT_TICKERS))
 
-    values = tuple(
-        dict.fromkeys(
-            ticker.strip().upper()
-            for ticker in raw.split(",")
-            if ticker.strip()
-        )
-    )
+    values = tuple(dict.fromkeys(ticker.strip().upper() for ticker in raw.split(",") if ticker.strip()))
 
     if not values:
         raise ValueError("TICKERS doit contenir au moins un symbole.")
@@ -59,69 +71,39 @@ def _tickers() -> tuple[str, ...]:
 
 @dataclass(frozen=True)
 class Settings:
-    catalog: str = field(
-        default_factory=lambda: os.getenv("NMP_CATALOG", "mnp_dev")
-    )
+    catalog: str = field(default_factory=lambda: os.getenv("NMP_CATALOG", "mnp_dev"))
 
     tickers: tuple[str, ...] = field(default_factory=_tickers)
 
-    benchmark: str = field(
-        default_factory=lambda: os.getenv("BENCHMARK", "SPY").strip().upper()
-    )
+    benchmark: str = field(default_factory=lambda: os.getenv("BENCHMARK", "SPY").strip().upper())
 
-    finnhub_key: str = field(
-        default_factory=lambda: _secret("FINNHUB_API_KEY")
-    )
+    finnhub_key: str = field(default_factory=lambda: _secret("FINNHUB_API_KEY"))
 
-    alpaca_key: str = field(
-        default_factory=lambda: _secret("ALPACA_KEY_ID")
-    )
+    alpaca_key: str = field(default_factory=lambda: _secret("ALPACA_KEY_ID"))
 
-    alpaca_secret: str = field(
-        default_factory=lambda: _secret("ALPACA_SECRET")
-    )
+    alpaca_secret: str = field(default_factory=lambda: _secret("ALPACA_SECRET"))
 
     # Flux temps réel.
-    alpaca_feed: str = field(
-        default_factory=lambda: os.getenv("ALPACA_FEED", "iex").lower()
-    )
+    alpaca_feed: str = field(default_factory=lambda: os.getenv("ALPACA_FEED", "iex").lower())
 
     # Flux utilisé pour les données historiques.
     # IEX est le choix prudent par défaut.
     # Utiliser SIP uniquement si les droits du compte le permettent.
-    alpaca_historical_feed: str = field(
-        default_factory=lambda: os.getenv(
-            "ALPACA_HISTORICAL_FEED", "iex"
-        ).lower()
-    )
+    alpaca_historical_feed: str = field(default_factory=lambda: os.getenv("ALPACA_HISTORICAL_FEED", "iex").lower())
 
-    newsapi_key: str = field(
-        default_factory=lambda: _secret("NEWSAPI_KEY")
-    )
+    newsapi_key: str = field(default_factory=lambda: _secret("NEWSAPI_KEY"))
 
-    reddit_id: str = field(
-        default_factory=lambda: _secret("REDDIT_CLIENT_ID")
-    )
+    reddit_id: str = field(default_factory=lambda: _secret("REDDIT_CLIENT_ID"))
 
-    reddit_secret: str = field(
-        default_factory=lambda: _secret("REDDIT_CLIENT_SECRET")
-    )
+    reddit_secret: str = field(default_factory=lambda: _secret("REDDIT_CLIENT_SECRET"))
 
-    sec_user_agent: str = field(
-        default_factory=lambda: os.getenv(
-            "SEC_USER_AGENT", "NMP Research adamlaye06@gmail.com"
-        )
-    )
+    sec_user_agent: str = field(default_factory=lambda: os.getenv("SEC_USER_AGENT", "NMP Research adamlaye06@gmail.com"))
 
     kafka_bootstrap: str = field(
-        default_factory=lambda: os.getenv(
-            "KAFKA_BOOTSTRAP", "nmp-ns-dev-2026.servicebus.windows.net:9093"
-        )
+        default_factory=lambda: os.getenv("KAFKA_BOOTSTRAP", "nmp-ns-dev-2026.servicebus.windows.net:9093")
     )
 
-    kafka_password: str = field(
-        default_factory=lambda: _secret("KAFKA_SASL_PASSWORD")
-    )
+    kafka_password: str = field(default_factory=lambda: _secret("KAFKA_SASL_PASSWORD"))
 
     overlap_minutes: int = 60
 

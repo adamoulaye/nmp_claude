@@ -65,6 +65,4 @@ def test_finnhub_sentiment_uses_utc_timestamp():
 
     record = source.to_record(raw)
 
-    assert record.published_utc == datetime(
-        2026, 11, 9, 15, 30, tzinfo=timezone.utc
-    )
+    assert record.published_utc == datetime(2026, 11, 9, 15, 30, tzinfo=timezone.utc)

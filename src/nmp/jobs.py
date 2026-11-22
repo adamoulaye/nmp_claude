@@ -1,4 +1,3 @@
-
 """Tâches Databricks (python_wheel_task) : ingestion batch, enrichissement, ML, santé."""
 
 from __future__ import annotations
@@ -53,17 +52,19 @@ def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
     spark = _spark()
     src = FinnhubNews(s)
     cat = s.catalog
-    schema = StructType([
-        StructField("source", StringType(), True),
-        StructField("record_id", StringType(), True),
-        StructField("symbol", StringType(), True),
-        StructField("published_utc", TimestampType(), True),
-        StructField("updated_utc", TimestampType(), True),
-        StructField("ingested_utc", TimestampType(), True),
-        StructField("payload", StringType(), True),
-        StructField("record_hash", StringType(), True),
-        StructField("schema_fp", StringType(), True),
-    ])
+    schema = StructType(
+        [
+            StructField("source", StringType(), True),
+            StructField("record_id", StringType(), True),
+            StructField("symbol", StringType(), True),
+            StructField("published_utc", TimestampType(), True),
+            StructField("updated_utc", TimestampType(), True),
+            StructField("ingested_utc", TimestampType(), True),
+            StructField("payload", StringType(), True),
+            StructField("record_hash", StringType(), True),
+            StructField("schema_fp", StringType(), True),
+        ]
+    )
 
     with run_log(spark, cat, "backfill", src.name) as st:
         total_kept = total_bad = total_recv = 0
@@ -87,17 +88,19 @@ def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
                     )
                     continue
                 per_symbol[rec.symbol] += 1
-                good.append({
-                    "source": rec.source,
-                    "record_id": str(rec.record_id),
-                    "symbol": rec.symbol,
-                    "published_utc": rec.published_utc,
-                    "updated_utc": rec.updated_utc,
-                    "ingested_utc": datetime.now(timezone.utc),
-                    "payload": json.dumps(rec.payload, default=str),
-                    "record_hash": payload_hash(rec.payload),
-                    "schema_fp": schema_fingerprint(rec.payload),
-                })
+                good.append(
+                    {
+                        "source": rec.source,
+                        "record_id": str(rec.record_id),
+                        "symbol": rec.symbol,
+                        "published_utc": rec.published_utc,
+                        "updated_utc": rec.updated_utc,
+                        "ingested_utc": datetime.now(timezone.utc),
+                        "payload": json.dumps(rec.payload, default=str),
+                        "record_hash": payload_hash(rec.payload),
+                        "schema_fp": schema_fingerprint(rec.payload),
+                    }
+                )
             capped = sorted(k for k, v in per_symbol.items() if v >= 240)
             if capped:
                 log.warning("Finnhub %s : plafond probablement atteint pour %s", d.isoformat(), capped)
@@ -140,9 +143,7 @@ def backfill_bars(start: str, end: str) -> None:
     def parse_utc(value: str) -> datetime:
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
         if dt.tzinfo is None or dt.utcoffset() is None:
-            raise ValueError(
-                "Les dates doivent inclure un fuseau horaire, par exemple Z."
-            )
+            raise ValueError("Les dates doivent inclure un fuseau horaire, par exemple Z.")
         return dt.astimezone(timezone.utc)
 
     start_utc = parse_utc(start)
@@ -168,48 +169,56 @@ def backfill_bars(start: str, end: str) -> None:
             except SchemaDrift:
                 raise
             except Exception as exc:
-                bad.append({
-                    "source": src.name,
-                    "raw": json.dumps(raw, default=str)[:20000],
-                    "error": str(exc)[:500],
-                })
+                bad.append(
+                    {
+                        "source": src.name,
+                        "raw": json.dumps(raw, default=str)[:20000],
+                        "error": str(exc)[:500],
+                    }
+                )
                 continue
 
             if rec is None or rec.record_id is None or rec.published_utc is None:
-                bad.append({
-                    "source": src.name,
-                    "raw": json.dumps(raw, default=str)[:20000],
-                    "error": "id/horodatage manquant",
-                })
+                bad.append(
+                    {
+                        "source": src.name,
+                        "raw": json.dumps(raw, default=str)[:20000],
+                        "error": "id/horodatage manquant",
+                    }
+                )
                 continue
 
-            good.append({
-                "source": rec.source,
-                "record_id": str(rec.record_id),
-                "symbol": rec.symbol,
-                "published_utc": rec.published_utc,
-                "updated_utc": rec.updated_utc,
-                "ingested_utc": datetime.now(timezone.utc),
-                "payload": json.dumps(rec.payload, default=str),
-                "record_hash": payload_hash(rec.payload),
-                "schema_fp": schema_fingerprint(rec.payload),
-            })
+            good.append(
+                {
+                    "source": rec.source,
+                    "record_id": str(rec.record_id),
+                    "symbol": rec.symbol,
+                    "published_utc": rec.published_utc,
+                    "updated_utc": rec.updated_utc,
+                    "ingested_utc": datetime.now(timezone.utc),
+                    "payload": json.dumps(rec.payload, default=str),
+                    "record_hash": payload_hash(rec.payload),
+                    "schema_fp": schema_fingerprint(rec.payload),
+                }
+            )
 
         st.kept = len(good)
         st.rejected = len(bad)
 
         if good:
-            schema = StructType([
-                StructField("source", StringType(), True),
-                StructField("record_id", StringType(), True),
-                StructField("symbol", StringType(), True),
-                StructField("published_utc", TimestampType(), True),
-                StructField("updated_utc", TimestampType(), True),
-                StructField("ingested_utc", TimestampType(), True),
-                StructField("payload", StringType(), True),
-                StructField("record_hash", StringType(), True),
-                StructField("schema_fp", StringType(), True),
-            ])
+            schema = StructType(
+                [
+                    StructField("source", StringType(), True),
+                    StructField("record_id", StringType(), True),
+                    StructField("symbol", StringType(), True),
+                    StructField("published_utc", TimestampType(), True),
+                    StructField("updated_utc", TimestampType(), True),
+                    StructField("ingested_utc", TimestampType(), True),
+                    StructField("payload", StringType(), True),
+                    StructField("record_hash", StringType(), True),
+                    StructField("schema_fp", StringType(), True),
+                ]
+            )
 
             df = spark.createDataFrame(good, schema=schema)
 
@@ -221,9 +230,7 @@ def backfill_bars(start: str, end: str) -> None:
             )
 
         if bad:
-            spark.createDataFrame(bad).write.mode("append").saveAsTable(
-                f"{cat}.bronze.rejects"
-            )
+            spark.createDataFrame(bad).write.mode("append").saveAsTable(f"{cat}.bronze.rejects")
 
         st.message = (
             f"Backfill {start_utc.isoformat()} -> {end_utc.isoformat()} ; "
@@ -274,11 +281,7 @@ def enrich(lookback_hours: int = 72) -> None:
             log.info("Aucun article dans la fenêtre de traitement.")
             return
 
-        pdf["text"] = (
-            pdf["headline"].fillna("")
-            + ". "
-            + pdf["summary"].fillna("")
-        )
+        pdf["text"] = pdf["headline"].fillna("") + ". " + pdf["summary"].fillna("")
 
         d = cluster_articles(pdf)
 
@@ -307,9 +310,7 @@ def enrich(lookback_hours: int = 72) -> None:
         ]
 
         candidates = d[["hk_article"]].drop_duplicates()
-        spark.createDataFrame(candidates).createOrReplaceTempView(
-            "_enrich_candidates"
-        )
+        spark.createDataFrame(candidates).createOrReplaceTempView("_enrich_candidates")
 
         pending = spark.sql(f"""
             SELECT c.hk_article
@@ -373,10 +374,7 @@ def enrich(lookback_hours: int = 72) -> None:
         ]
 
         for col in timestamp_columns:
-            out[col] = (
-                pd.to_datetime(out[col], utc=True)
-                .dt.tz_localize(None)
-            )
+            out[col] = pd.to_datetime(out[col], utc=True).dt.tz_localize(None)
 
         spark.createDataFrame(out).createOrReplaceTempView("_enriched")
 
@@ -565,24 +563,12 @@ def car(lookback_hours: int = 192) -> None:
         # Cela élimine les jours fériés et tient compte des
         # séances écourtées.
         # ---------------------------------------------------------
-        min_local_date = (
-            events["event_utc"]
-            .dt.tz_convert("America/New_York")
-            .dt.date.min()
-        )
-        max_local_date = (
-            events["event_utc"]
-            .dt.tz_convert("America/New_York")
-            .dt.date.max()
-        )
+        min_local_date = events["event_utc"].dt.tz_convert("America/New_York").dt.date.min()
+        max_local_date = events["event_utc"].dt.tz_convert("America/New_York").dt.date.max()
 
-        session_start = (
-            pd.Timestamp(min_local_date) - pd.Timedelta(days=2)
-        ).date().isoformat()
+        session_start = (pd.Timestamp(min_local_date) - pd.Timedelta(days=2)).date().isoformat()
 
-        session_end = (
-            pd.Timestamp(max_local_date) + pd.Timedelta(days=2)
-        ).date().isoformat()
+        session_end = (pd.Timestamp(max_local_date) + pd.Timedelta(days=2)).date().isoformat()
 
         sessions = build_sessions(session_start, session_end)
 
@@ -592,15 +578,9 @@ def car(lookback_hours: int = 192) -> None:
             return
 
         sessions = sessions.copy()
-        sessions["session_date"] = pd.to_datetime(
-            sessions["session_date"]
-        ).dt.date
+        sessions["session_date"] = pd.to_datetime(sessions["session_date"]).dt.date
 
-        events["_session_date"] = (
-            events["event_utc"]
-            .dt.tz_convert("America/New_York")
-            .dt.date
-        )
+        events["_session_date"] = events["event_utc"].dt.tz_convert("America/New_York").dt.date
 
         events = events.merge(
             sessions[["session_date", "open_utc", "close_utc"]],
@@ -610,9 +590,7 @@ def car(lookback_hours: int = 192) -> None:
         )
 
         if events.empty:
-            log.info(
-                "Aucun événement ne correspond à une séance officielle NYSE."
-            )
+            log.info("Aucun événement ne correspond à une séance officielle NYSE.")
             return
 
         events["open_utc"] = pd.to_datetime(
@@ -628,27 +606,18 @@ def car(lookback_hours: int = 192) -> None:
         # Pour disposer de 60 rendements après m0, la dernière
         # barre nécessaire est celle de m0 + 60 minutes.
         events["_m0"] = events["event_utc"].dt.floor("min")
-        events["_last_required_bar"] = (
-            events["_m0"] + pd.Timedelta(minutes=60)
-        )
-        events["_last_session_bar"] = (
-            events["close_utc"] - pd.Timedelta(minutes=1)
-        )
+        events["_last_required_bar"] = events["_m0"] + pd.Timedelta(minutes=60)
+        events["_last_session_bar"] = events["close_utc"] - pd.Timedelta(minutes=1)
 
-        eligible_mask = (
-            (events["event_utc"] >= events["open_utc"])
-            & (
-                events["_last_required_bar"]
-                <= events["_last_session_bar"]
-            )
+        eligible_mask = (events["event_utc"] >= events["open_utc"]) & (
+            events["_last_required_bar"] <= events["_last_session_bar"]
         )
 
         excluded_session_count = int((~eligible_mask).sum())
 
         if excluded_session_count:
             log.info(
-                "CAR : %d événement(s) écarté(s), car la fenêtre "
-                "de 60 minutes dépasse la séance NYSE.",
+                "CAR : %d événement(s) écarté(s), car la fenêtre de 60 minutes dépasse la séance NYSE.",
                 excluded_session_count,
             )
 
@@ -668,10 +637,7 @@ def car(lookback_hours: int = 192) -> None:
         )
 
         if events.empty:
-            log.info(
-                "Aucun événement ne dispose de 60 minutes complètes "
-                "avant la fermeture NYSE."
-            )
+            log.info("Aucun événement ne dispose de 60 minutes complètes avant la fermeture NYSE.")
             return
 
         # Dix jours calendaires pour couvrir les week-ends
@@ -682,10 +648,7 @@ def car(lookback_hours: int = 192) -> None:
         tickers = set(events["ticker"].dropna().tolist())
         tickers.add(s.benchmark)
 
-        syms = ", ".join(
-            "'" + str(t).replace("'", "''") + "'"
-            for t in sorted(tickers)
-        )
+        syms = ", ".join("'" + str(t).replace("'", "''") + "'" for t in sorted(tickers))
 
         bars = spark.sql(f"""
             SELECT
@@ -703,9 +666,7 @@ def car(lookback_hours: int = 192) -> None:
         """).toPandas()
 
         if bars.empty:
-            log.warning(
-                "Aucun cours boursier disponible pour les événements CAR."
-            )
+            log.warning("Aucun cours boursier disponible pour les événements CAR.")
             st.rejected = len(events)
             return
 
@@ -735,21 +696,15 @@ def car(lookback_hours: int = 192) -> None:
 
         if not err.empty:
             if "status" in err.columns:
-                pending_count = int(
-                    (err["status"] == "pending").sum()
-                )
-                error_count = int(
-                    (err["status"] == "error").sum()
-                )
+                pending_count = int((err["status"] == "pending").sum())
+                error_count = int((err["status"] == "error").sum())
             else:
                 error_count = len(err)
 
         st.rejected = error_count
 
         log.info(
-            "CAR : %d événement(s) calculé(s), "
-            "%d en attente de données complètes, "
-            "%d erreur(s).",
+            "CAR : %d événement(s) calculé(s), %d en attente de données complètes, %d erreur(s).",
             st.kept,
             pending_count,
             error_count,
@@ -769,10 +724,7 @@ def car(lookback_hours: int = 192) -> None:
                 )
 
         if pending_count > 0:
-            log.info(
-                "Les événements incomplets ne sont pas enregistrés "
-                "et pourront être retraités au prochain batch."
-            )
+            log.info("Les événements incomplets ne sont pas enregistrés et pourront être retraités au prochain batch.")
 
         if res.empty:
             log.info("Aucun résultat CAR exploitable.")
@@ -781,10 +733,7 @@ def car(lookback_hours: int = 192) -> None:
         out = to_bv_event_car(res)
         out["model_version"] = model_version
 
-        out["load_ts"] = (
-            pd.to_datetime(out["load_ts"], utc=True)
-            .dt.tz_localize(None)
-        )
+        out["load_ts"] = pd.to_datetime(out["load_ts"], utc=True).dt.tz_localize(None)
 
         from pyspark.sql.types import (
             BooleanType,
@@ -796,23 +745,25 @@ def car(lookback_hours: int = 192) -> None:
             TimestampType,
         )
 
-        schema = StructType([
-            StructField("hk_article", StringType(), True),
-            StructField("hk_security", StringType(), True),
-            StructField("event_time_basis", StringType(), True),
-            StructField("window_start_min", IntegerType(), True),
-            StructField("window_end_min", IntegerType(), True),
-            StructField("car", DoubleType(), True),
-            StructField("t_stat", DoubleType(), True),
-            StructField("p_value", DoubleType(), True),
-            StructField("alpha", DoubleType(), True),
-            StructField("beta", DoubleType(), True),
-            StructField("n_est", IntegerType(), True),
-            StructField("car_pre", DoubleType(), True),
-            StructField("leak_flag", BooleanType(), True),
-            StructField("model_version", StringType(), True),
-            StructField("load_ts", TimestampType(), True),
-        ])
+        schema = StructType(
+            [
+                StructField("hk_article", StringType(), True),
+                StructField("hk_security", StringType(), True),
+                StructField("event_time_basis", StringType(), True),
+                StructField("window_start_min", IntegerType(), True),
+                StructField("window_end_min", IntegerType(), True),
+                StructField("car", DoubleType(), True),
+                StructField("t_stat", DoubleType(), True),
+                StructField("p_value", DoubleType(), True),
+                StructField("alpha", DoubleType(), True),
+                StructField("beta", DoubleType(), True),
+                StructField("n_est", IntegerType(), True),
+                StructField("car_pre", DoubleType(), True),
+                StructField("leak_flag", BooleanType(), True),
+                StructField("model_version", StringType(), True),
+                StructField("load_ts", TimestampType(), True),
+            ]
+        )
 
         columns = [field.name for field in schema.fields]
         out = out[columns].copy()
@@ -877,8 +828,7 @@ def car(lookback_hours: int = 192) -> None:
         """)
 
         log.info(
-            "CAR terminé : %d lignes enregistrées, "
-            "%d événements en attente, %d erreurs.",
+            "CAR terminé : %d lignes enregistrées, %d événements en attente, %d erreurs.",
             len(out),
             pending_count,
             error_count,
@@ -889,9 +839,7 @@ def train(experiment: str = "/Shared/nmp/event_impact") -> None:
     from nmp.ml.event_classifier import train_and_log
 
     spark = _spark()
-    df = spark.table(
-        f"{get_settings().catalog}.gold.v_training_set"
-    ).toPandas()
+    df = spark.table(f"{get_settings().catalog}.gold.v_training_set").toPandas()
 
     res = train_and_log(
         df,
@@ -1003,15 +951,17 @@ def publish() -> None:
             for metric, value in metrics.items():
                 metric_rows.append((mv.run_id, f"event_magnitude_{n}", str(mv.version), alias, metric, float(value), now))
 
-        m_schema = StructType([
-            StructField("run_id", StringType()),
-            StructField("model_name", StringType()),
-            StructField("model_version", StringType()),
-            StructField("alias", StringType()),
-            StructField("metric", StringType()),
-            StructField("value", DoubleType()),
-            StructField("logged_utc", TimestampType()),
-        ])
+        m_schema = StructType(
+            [
+                StructField("run_id", StringType()),
+                StructField("model_name", StringType()),
+                StructField("model_version", StringType()),
+                StructField("alias", StringType()),
+                StructField("metric", StringType()),
+                StructField("value", DoubleType()),
+                StructField("logged_utc", TimestampType()),
+            ]
+        )
         spark.createDataFrame(metric_rows, schema=m_schema).createOrReplaceTempView("_pub_metrics")
         spark.sql(f"""
             MERGE INTO {cat}.gold.fact_model_metrics AS t
@@ -1035,34 +985,43 @@ def publish() -> None:
         n_test_run = int(client.get_run(mv.run_id).data.params.get("n_test", -1))
         if n_test_run != len(te):
             raise ValueError(
-                f"Découpage différent de l'entraînement : holdout publié {len(te)} "
-                f"vs n_test={n_test_run}. Publication annulée."
+                f"Découpage différent de l'entraînement : holdout publié {len(te)} vs n_test={n_test_run}. Publication annulée."
             )
         model = mlflow.sklearn.load_model(f"models:/{full}/{mv.version}")
         pred = model.predict(te[x_cols]).astype(int)
         proba_high = model.predict_proba(te[x_cols])[:, 2]
-        out = pd.DataFrame({
-            "hk_article": te["hk_article"].astype(str),
-            "hk_security": te["hk_security"].astype(str),
-            "predicted_magnitude": pred,
-            "predicted_proba_high": proba_high.astype(float),
-            "model_name": f"event_magnitude_{champion}",
-            "model_version": str(mv.version),
-            "scored_utc": now,
-        })
-        p_schema = StructType([
-            StructField("hk_article", StringType()),
-            StructField("hk_security", StringType()),
-            StructField("predicted_magnitude", IntegerType()),
-            StructField("predicted_proba_high", DoubleType()),
-            StructField("model_name", StringType()),
-            StructField("model_version", StringType()),
-            StructField("scored_utc", TimestampType()),
-        ])
+        out = pd.DataFrame(
+            {
+                "hk_article": te["hk_article"].astype(str),
+                "hk_security": te["hk_security"].astype(str),
+                "predicted_magnitude": pred,
+                "predicted_proba_high": proba_high.astype(float),
+                "model_name": f"event_magnitude_{champion}",
+                "model_version": str(mv.version),
+                "scored_utc": now,
+            }
+        )
+        p_schema = StructType(
+            [
+                StructField("hk_article", StringType()),
+                StructField("hk_security", StringType()),
+                StructField("predicted_magnitude", IntegerType()),
+                StructField("predicted_proba_high", DoubleType()),
+                StructField("model_name", StringType()),
+                StructField("model_version", StringType()),
+                StructField("scored_utc", TimestampType()),
+            ]
+        )
         recs = [
-            (r.hk_article, r.hk_security, int(r.predicted_magnitude),
-             float(r.predicted_proba_high), r.model_name, r.model_version,
-             r.scored_utc.to_pydatetime())
+            (
+                r.hk_article,
+                r.hk_security,
+                int(r.predicted_magnitude),
+                float(r.predicted_proba_high),
+                r.model_name,
+                r.model_version,
+                r.scored_utc.to_pydatetime(),
+            )
             for r in out.itertuples(index=False)
         ]
         spark.createDataFrame(recs, schema=p_schema).createOrReplaceTempView("_pub_pred")
@@ -1085,17 +1044,21 @@ def publish() -> None:
             except Exception as exc:  # variable constante ou trop peu de valeurs
                 log.warning("PSI non calculable pour %s : %s", f, exc)
         if drift_rows:
-            d_schema = StructType([
-                StructField("checked_utc", TimestampType()),
-                StructField("model_name", StringType()),
-                StructField("feature", StringType()),
-                StructField("psi", DoubleType()),
-            ])
-            spark.createDataFrame(drift_rows, schema=d_schema).write.mode("append").saveAsTable(
-                f"{cat}.gold.fact_drift"
+            d_schema = StructType(
+                [
+                    StructField("checked_utc", TimestampType()),
+                    StructField("model_name", StringType()),
+                    StructField("feature", StringType()),
+                    StructField("psi", DoubleType()),
+                ]
             )
+            spark.createDataFrame(drift_rows, schema=d_schema).write.mode("append").saveAsTable(f"{cat}.gold.fact_drift")
 
         log.info(
             "Publication terminée : champion=%s v%s, %d prédictions (holdout), %d métriques, %d PSI.",
-            champion, mv.version, len(recs), len(metric_rows), len(drift_rows),
+            champion,
+            mv.version,
+            len(recs),
+            len(metric_rows),
+            len(drift_rows),
         )

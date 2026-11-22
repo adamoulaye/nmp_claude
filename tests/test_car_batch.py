@@ -1,4 +1,3 @@
-
 import sys
 
 import pandas as pd
@@ -34,11 +33,13 @@ def test_run_batch_results_and_errors():
     """Vérifie le calcul CAR et la gestion d'un titre sans données."""
     bars, event_time = _make_batch_data()
 
-    news = pd.DataFrame({
-        "article_id": ["a1", "a2"],
-        "ticker": ["AAPL", "TSLA"],
-        "published_utc": [event_time, event_time],
-    })
+    news = pd.DataFrame(
+        {
+            "article_id": ["a1", "a2"],
+            "ticker": ["AAPL", "TSLA"],
+            "published_utc": [event_time, event_time],
+        }
+    )
 
     results, windows, errors = run_batch(news, bars)
 
@@ -59,13 +60,15 @@ def test_run_batch_preserves_event_time_basis():
     """Vérifie que run_batch conserve la référence temporelle."""
     bars, event_time = _make_batch_data()
 
-    news = pd.DataFrame({
-        "hk_article": ["a1", "a1"],
-        "hk_security": ["s1", "s1"],
-        "ticker": ["AAPL", "AAPL"],
-        "event_time_basis": ["published", "available"],
-        "event_utc": [event_time, event_time],
-    })
+    news = pd.DataFrame(
+        {
+            "hk_article": ["a1", "a1"],
+            "hk_security": ["s1", "s1"],
+            "ticker": ["AAPL", "AAPL"],
+            "event_time_basis": ["published", "available"],
+            "event_utc": [event_time, event_time],
+        }
+    )
 
     results, _, errors = run_batch(
         news,
@@ -94,17 +97,17 @@ def test_run_batch_marks_incomplete_event_as_pending():
     # La fenêtre CAR de 60 minutes n'est donc pas complète.
     cutoff = event_time.floor("min") + pd.Timedelta(minutes=25)
 
-    bars = bars[
-        bars["ts_utc"] <= cutoff
-    ].copy()
+    bars = bars[bars["ts_utc"] <= cutoff].copy()
 
-    news = pd.DataFrame({
-        "hk_article": ["a1"],
-        "hk_security": ["s1"],
-        "ticker": ["AAPL"],
-        "event_time_basis": ["published"],
-        "event_utc": [event_time],
-    })
+    news = pd.DataFrame(
+        {
+            "hk_article": ["a1"],
+            "hk_security": ["s1"],
+            "ticker": ["AAPL"],
+            "event_time_basis": ["published"],
+            "event_utc": [event_time],
+        }
+    )
 
     results, windows, errors = run_batch(
         news,
@@ -129,23 +132,25 @@ def test_to_bv_event_car_creates_two_windows():
     """Vérifie la transformation des CAR en deux fenêtres."""
     computed_at = pd.Timestamp("2026-11-09T20:00:00Z")
 
-    results = pd.DataFrame({
-        "hk_article": ["a1"],
-        "hk_security": ["s1"],
-        "event_time_basis": ["published"],
-        "car_0_15": [0.01],
-        "car_0_60": [0.03],
-        "t_0_15": [2.0],
-        "t_0_60": [2.5],
-        "p_0_15": [0.04],
-        "p_0_60": [0.01],
-        "alpha": [0.001],
-        "beta": [1.1],
-        "n_est": [390],
-        "car_pre": [0.002],
-        "leak_flag": [False],
-        "computed_at": [computed_at],
-    })
+    results = pd.DataFrame(
+        {
+            "hk_article": ["a1"],
+            "hk_security": ["s1"],
+            "event_time_basis": ["published"],
+            "car_0_15": [0.01],
+            "car_0_60": [0.03],
+            "t_0_15": [2.0],
+            "t_0_60": [2.5],
+            "p_0_15": [0.04],
+            "p_0_60": [0.01],
+            "alpha": [0.001],
+            "beta": [1.1],
+            "n_est": [390],
+            "car_pre": [0.002],
+            "leak_flag": [False],
+            "computed_at": [computed_at],
+        }
+    )
 
     output = to_bv_event_car(results)
 
@@ -172,23 +177,25 @@ def test_to_bv_event_car_preserves_event_time_basis():
     """Vérifie que publication et disponibilité restent distinctes."""
     computed_at = pd.Timestamp("2026-11-09T20:00:00Z")
 
-    results = pd.DataFrame({
-        "hk_article": ["a1", "a1"],
-        "hk_security": ["s1", "s1"],
-        "event_time_basis": ["published", "available"],
-        "car_0_15": [0.01, 0.02],
-        "car_0_60": [0.03, 0.04],
-        "t_0_15": [2.0, 2.1],
-        "t_0_60": [2.5, 2.6],
-        "p_0_15": [0.04, 0.03],
-        "p_0_60": [0.01, 0.02],
-        "alpha": [0.001, 0.001],
-        "beta": [1.1, 1.1],
-        "n_est": [390, 390],
-        "car_pre": [0.0, 0.0],
-        "leak_flag": [False, False],
-        "computed_at": [computed_at, computed_at],
-    })
+    results = pd.DataFrame(
+        {
+            "hk_article": ["a1", "a1"],
+            "hk_security": ["s1", "s1"],
+            "event_time_basis": ["published", "available"],
+            "car_0_15": [0.01, 0.02],
+            "car_0_60": [0.03, 0.04],
+            "t_0_15": [2.0, 2.1],
+            "t_0_60": [2.5, 2.6],
+            "p_0_15": [0.04, 0.03],
+            "p_0_60": [0.01, 0.02],
+            "alpha": [0.001, 0.001],
+            "beta": [1.1, 1.1],
+            "n_est": [390, 390],
+            "car_pre": [0.0, 0.0],
+            "leak_flag": [False, False],
+            "computed_at": [computed_at, computed_at],
+        }
+    )
 
     output = to_bv_event_car(results)
 
@@ -199,13 +206,9 @@ def test_to_bv_event_car_preserves_event_time_basis():
         "available",
     }
 
-    published = output[
-        output["event_time_basis"] == "published"
-    ]
+    published = output[output["event_time_basis"] == "published"]
 
-    available = output[
-        output["event_time_basis"] == "available"
-    ]
+    available = output[output["event_time_basis"] == "available"]
 
     assert set(published["window_end_min"]) == {15, 60}
     assert set(available["window_end_min"]) == {15, 60}
@@ -223,16 +226,16 @@ def test_to_bv_event_car_empty_input():
 
 def test_to_bv_event_car_rejects_missing_columns():
     """Vérifie qu'une entrée incomplète produit une erreur explicite."""
-    results = pd.DataFrame({
-        "hk_article": ["a1"],
-        "hk_security": ["s1"],
-    })
+    results = pd.DataFrame(
+        {
+            "hk_article": ["a1"],
+            "hk_security": ["s1"],
+        }
+    )
 
     try:
         to_bv_event_car(results)
     except ValueError as exc:
         assert "Colonnes manquantes" in str(exc)
     else:
-        raise AssertionError(
-            "Une ValueError était attendue pour les colonnes manquantes."
-        )
+        raise AssertionError("Une ValueError était attendue pour les colonnes manquantes.")

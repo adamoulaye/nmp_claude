@@ -44,9 +44,7 @@ def test_hourly_series_ignores_overnight_gap():
     ts = d1.append(d2)
     close = np.concatenate([np.full(60, 100.0), np.full(60, 150.0)])  # saut de nuit énorme
     bars = pd.DataFrame({"hk_security": "A", "bar_ts": ts, "close": close})
-    news = pd.DataFrame(
-        {"published_utc": [pd.Timestamp("2026-10-05 19:10", tz="UTC")] * 2, "sentiment_score": [0.5, -0.1]}
-    )
+    news = pd.DataFrame({"published_utc": [pd.Timestamp("2026-10-05 19:10", tz="UTC")] * 2, "sentiment_score": [0.5, -0.1]})
     sent, vol = hourly_series(bars, news)
     assert float(vol.max()) == 0.0
     assert abs(float(sent.iloc[0]) - 0.2) < 1e-9

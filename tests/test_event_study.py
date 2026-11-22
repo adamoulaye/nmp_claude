@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -33,17 +32,16 @@ def make_bars(shock=0.0, seed=0):
     m0 = pd.Timestamp("2026-10-13 15:30", tz="UTC")
 
     if shock:
-        r_s[
-            (idx > m0)
-            & (idx <= m0 + pd.Timedelta(minutes=5))
-        ] += shock / 5
+        r_s[(idx > m0) & (idx <= m0 + pd.Timedelta(minutes=5))] += shock / 5
 
     def make_frame(returns, initial_price):
-        return pd.DataFrame({
-            "ts_utc": idx,
-            "close": initial_price * np.exp(np.cumsum(returns)),
-            "volume": rng.integers(100, 1000, len(idx)),
-        })
+        return pd.DataFrame(
+            {
+                "ts_utc": idx,
+                "close": initial_price * np.exp(np.cumsum(returns)),
+                "volume": rng.integers(100, 1000, len(idx)),
+            }
+        )
 
     return (
         make_frame(r_s, 150.0),
@@ -55,9 +53,7 @@ def test_log_returns_drops_overnight_gap():
     """Vérifie que les rendements ne traversent pas les nuits."""
     stock, _ = make_bars()
 
-    returns = log_returns(
-        stock.set_index("ts_utc")["close"]
-    )
+    returns = log_returns(stock.set_index("ts_utc")["close"])
 
     assert returns.isna().sum() == 2
 
@@ -79,19 +75,20 @@ def test_shock_after_publication_is_detected():
 
     assert abs(result["beta"] - 1.2) < 0.1
 
-    assert (
-        result["car_0_15"] > 0.003
-        and result["p_0_15"] < 0.01
-    )
+    assert result["car_0_15"] > 0.003 and result["p_0_15"] < 0.01
 
     assert abs(result["car_pre"]) < 0.004
     assert not result["leak_flag"]
 
     # La minute contenant la publication est exclue.
-    assert windows.loc[
-        windows.k == 0,
-        "ar",
-    ].isna().all()
+    assert (
+        windows.loc[
+            windows.k == 0,
+            "ar",
+        ]
+        .isna()
+        .all()
+    )
 
     assert windows["k"].min() == -15
     assert windows["k"].max() == 60
@@ -136,10 +133,7 @@ def test_estimation_ignores_future_data():
     stock_modified = stock.copy()
     market_modified = market.copy()
 
-    mask = (
-        stock_modified["ts_utc"]
-        > event_time + pd.Timedelta(minutes=60)
-    )
+    mask = stock_modified["ts_utc"] > event_time + pd.Timedelta(minutes=60)
 
     stock_modified.loc[mask, "close"] *= 3
 
@@ -163,18 +157,11 @@ def test_incomplete_event_window_is_rejected():
     )
 
     # On coupe les données 25 minutes après la publication.
-    cutoff = (
-        event_time.floor("min")
-        + pd.Timedelta(minutes=25)
-    )
+    cutoff = event_time.floor("min") + pd.Timedelta(minutes=25)
 
-    stock = stock[
-        stock["ts_utc"] <= cutoff
-    ].copy()
+    stock = stock[stock["ts_utc"] <= cutoff].copy()
 
-    market = market[
-        market["ts_utc"] <= cutoff
-    ].copy()
+    market = market[market["ts_utc"] <= cutoff].copy()
 
     with pytest.raises(
         IncompleteEventError,
@@ -189,9 +176,7 @@ def test_incomplete_event_window_is_rejected():
 
 def test_cross_sectional():
     """Vérifie le test transversal des rendements anormaux."""
-    output = cross_sectional_test(
-        [0.01, 0.02, 0.015, 0.03, 0.012, 0.02, 0.018]
-    )
+    output = cross_sectional_test([0.01, 0.02, 0.015, 0.03, 0.012, 0.02, 0.018])
 
     assert output["n"] == 7
     assert output["p_ttest"] < 0.01
