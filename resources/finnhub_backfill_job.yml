@@ -5,6 +5,12 @@ resources:
       max_concurrent_runs: 1
       timeout_seconds: 3600
 
+      parameters:
+        - name: start
+          default: "2026-11-21"
+        - name: end
+          default: "2026-11-21"
+
       environments:
         - environment_key: serverless_env
           spec:
@@ -24,6 +30,6 @@ resources:
               - "${var.catalog}"
               - backfill-finnhub
               - --start
-              - "2026-11-16"
+              - "{{job.parameters.start}}"
               - --end
-              - "2026-11-20"
+              - "{{job.parameters.end}}"
