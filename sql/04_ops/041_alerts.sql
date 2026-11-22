@@ -3,7 +3,7 @@ USE CATALOG IDENTIFIER(:catalog);
 CREATE OR REPLACE VIEW ops.v_alerts AS
 WITH fr AS (SELECT * FROM ops.freshness WHERE checked_utc = (SELECT max(checked_utc) FROM ops.freshness)),
 sess AS (SELECT (dayofweek(t) BETWEEN 2 AND 6 AND hour(t)*60 + minute(t) BETWEEN 570 AND 960) AS en_seance FROM (SELECT from_utc_timestamp(current_timestamp(),'America/New_York') AS t)),
-last_run AS (SELECT source, max_by(status, started_utc) AS statut FROM ops.run_log WHERE job='ingest' GROUP BY source),
+last_run AS (SELECT source, max_by(status, started_utc) AS statut FROM ops.run_log WHERE job='ingest' AND started_utc >= current_timestamp() - INTERVAL 7 DAYS GROUP BY source),
 bar AS (SELECT timestampdiff(MINUTE, max(bar_ts), current_timestamp()) AS age_min FROM gold.fact_bar_1m),
 orph AS (SELECT COUNT(*) n FROM gold.fact_news_impact f WHERE NOT EXISTS (SELECT 1 FROM gold.dim_security d WHERE d.hk_security = f.hk_security)),
 nopred AS (SELECT COUNT(*) n FROM gold.model_predictions p WHERE NOT EXISTS (SELECT 1 FROM gold.fact_news_impact f WHERE f.hk_article = p.hk_article AND f.hk_security = p.hk_security)),
