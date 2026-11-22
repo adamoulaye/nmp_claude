@@ -16,7 +16,6 @@ import json
 import logging
 import sys
 import time
-
 from datetime import datetime, timezone
 
 from nmp.common.config import get_settings

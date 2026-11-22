@@ -1,5 +1,7 @@
 """Importance par permutation du champion sur le holdout publie (271 evenements)."""
-import json, os, subprocess
+import json
+import os
+import subprocess
 import numpy as np
 import pandas as pd
 os.environ["DATABRICKS_CONFIG_PROFILE"] = "nmp"

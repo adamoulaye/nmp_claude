@@ -37,13 +37,13 @@ def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
     from collections import Counter
     from datetime import date
 
+    from pyspark.sql.types import StringType, StructField, StructType, TimestampType
+
     from nmp.common.lakehouse import merge_insert_only
-    from nmp.common.runlog import run_log
     from nmp.common.retry import SchemaDrift
+    from nmp.common.runlog import run_log
     from nmp.ingestion.base import payload_hash, schema_fingerprint
     from nmp.ingestion.sources import FinnhubNews
-
-    from pyspark.sql.types import StringType, StructField, StructType, TimestampType
 
     d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
     if d1 < d0:
@@ -122,18 +122,18 @@ def backfill_bars(start: str, end: str) -> None:
     """Recharge une période historique de barres sans modifier le watermark."""
     import json
 
-    from nmp.common.lakehouse import merge_insert_only
-    from nmp.common.runlog import run_log
-    from nmp.common.retry import SchemaDrift
-    from nmp.ingestion.base import payload_hash, schema_fingerprint
-    from nmp.ingestion.sources import AlpacaBars1m
-
     from pyspark.sql.types import (
         StringType,
         StructField,
         StructType,
         TimestampType,
     )
+
+    from nmp.common.lakehouse import merge_insert_only
+    from nmp.common.retry import SchemaDrift
+    from nmp.common.runlog import run_log
+    from nmp.ingestion.base import payload_hash, schema_fingerprint
+    from nmp.ingestion.sources import AlpacaBars1m
 
     def parse_utc(value: str) -> datetime:
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -446,8 +446,8 @@ def car(lookback_hours: int = 192) -> None:
     de séance nécessaires sont disponibles avant la fermeture NYSE.
     """
     import pandas as pd
-    from nmp import __version__ as CODE_VERSION
 
+    from nmp import __version__ as CODE_VERSION
     from nmp.common.runlog import run_log
     from nmp.common.timeutil import build_sessions
     from nmp.transform.car_batch import run_batch, to_bv_event_car
@@ -784,12 +784,12 @@ def car(lookback_hours: int = 192) -> None:
         )
 
         from pyspark.sql.types import (
-            StructType,
-            StructField,
-            StringType,
-            IntegerType,
-            DoubleType,
             BooleanType,
+            DoubleType,
+            IntegerType,
+            StringType,
+            StructField,
+            StructType,
             TimestampType,
         )
 

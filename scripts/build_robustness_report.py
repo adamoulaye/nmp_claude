@@ -3,7 +3,6 @@ import pandas as pd
 
 from nmp.local.events_batch import (
     effect,
-    ticker_day_units,
     summarize,
 )
 from nmp.local.robustness import compare_to_placebo

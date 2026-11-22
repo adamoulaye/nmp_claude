@@ -17,6 +17,7 @@ from nmp.common.lakehouse import get_watermark, merge_insert_only, set_watermark
 from nmp.common.retry import SchemaDrift
 from nmp.common.runlog import run_log
 
+
 def _as_utc(value: datetime) -> datetime:
     """Normalise un datetime en UTC, en interprétant les dates naïves comme UTC."""
     if value.tzinfo is None or value.utcoffset() is None:

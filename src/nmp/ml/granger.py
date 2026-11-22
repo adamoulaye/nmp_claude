@@ -16,8 +16,9 @@ def _stationary(s: pd.Series, alpha: float = 0.05) -> pd.Series:
 
 def granger_pair(sentiment: pd.Series, volatility: pd.Series, max_lag: int = 6) -> pd.DataFrame:
     """Teste les deux sens sur séries rendues stationnaires (ADF). p corrigées Bonferroni sur les lags."""
-    from statsmodels.tsa.stattools import grangercausalitytests
     import inspect
+
+    from statsmodels.tsa.stattools import grangercausalitytests
 
     kw = {"verbose": False} if "verbose" in inspect.signature(grangercausalitytests).parameters else {}
 

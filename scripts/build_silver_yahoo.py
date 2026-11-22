@@ -1,7 +1,6 @@
 """Construction de Silver Yahoo Finance à partir des archives Bronze."""
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd

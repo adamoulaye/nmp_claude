@@ -1,5 +1,8 @@
 """Envoie une nouvelle DEMO- dans raw.news (Event Hubs) et note l'heure d'envoi."""
-import json, os, sys, time
+import json
+import os
+import sys
+import time
 from datetime import datetime, timezone
 from confluent_kafka import Producer
 

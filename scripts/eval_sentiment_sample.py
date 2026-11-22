@@ -1,5 +1,6 @@
 """Evalue FinBERT (modele 1) sur l'echantillon annote, contre un lexique et la classe majoritaire."""
-import pathlib, re
+import pathlib
+import re
 import pandas as pd
 from sklearn.metrics import accuracy_score, cohen_kappa_score, confusion_matrix, f1_score
 

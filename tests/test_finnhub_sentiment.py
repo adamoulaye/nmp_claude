@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from nmp.ingestion.sources import FinnhubSentiment
 from nmp.ingestion.base import payload_hash
+from nmp.ingestion.sources import FinnhubSentiment
 
 
 def test_finnhub_sentiment_excludes_asof_from_payload():

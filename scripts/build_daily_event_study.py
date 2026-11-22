@@ -1,6 +1,5 @@
 """Étude d'événements quotidienne avec Yahoo Finance et SPY."""
 
-import math
 from pathlib import Path
 
 import numpy as np

@@ -124,9 +124,10 @@ def hourly_series(bars: pd.DataFrame, news: pd.DataFrame) -> tuple[pd.Series, pd
 
 
 def anomalies() -> None:
+    from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType, TimestampType
+
     from nmp.common.lakehouse import merge_insert_only
     from nmp.common.runlog import run_log
-    from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType, TimestampType
 
     s = get_settings()
     cat = s.catalog
@@ -222,9 +223,10 @@ def anomalies() -> None:
 
 
 def granger() -> None:
-    from nmp.ml.granger import granger_pair
-    from nmp.common.runlog import run_log
     from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType, TimestampType
+
+    from nmp.common.runlog import run_log
+    from nmp.ml.granger import granger_pair
 
     s = get_settings()
     cat = s.catalog

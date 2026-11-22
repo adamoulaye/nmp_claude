@@ -1,5 +1,9 @@
 """Tire un echantillon d'articles a annoter (modele 1) : un fichier sans score, un fichier cle."""
-import csv, json, pathlib, subprocess, time
+import csv
+import json
+import pathlib
+import subprocess
+import time
 
 P, W, N = "nmp", "601d8e918b421d97", 17
 OUT = pathlib.Path("data/exports")
