@@ -132,7 +132,8 @@ def anomalies() -> None:
     cat = s.catalog
     spark = _spark()
     spark.conf.set("spark.sql.session.timeZone", "UTC")
-    version = "iforest_" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
+    computed = datetime.now(timezone.utc)
+    version = "iforest_" + computed.strftime("%Y%m%d%H%M")
     with run_log(spark, cat, "model", "anomalies") as st:
         bars = spark.sql(
             f"SELECT hk_security, bar_ts, close, high, low, volume FROM {cat}.vault.nhsat_bar_1m"
@@ -157,10 +158,11 @@ def anomalies() -> None:
                     StructField("anomaly_score", DoubleType(), True),
                     StructField("anomaly_type", StringType(), True),
                     StructField("model_version", StringType(), True),
+                    StructField("computed_utc", TimestampType(), True),
                 ]
             )
             recs = [
-                (r.hk_security, r.bar_ts.to_pydatetime(), float(r.anomaly_score), r.anomaly_type, r.model_version)
+                (r.hk_security, r.bar_ts.to_pydatetime(), float(r.anomaly_score), r.anomaly_type, r.model_version, computed)
                 for r in rows.itertuples(index=False)
             ]
             merge_insert_only(
@@ -171,7 +173,7 @@ def anomalies() -> None:
             )
         spark.sql(
             f"""CREATE OR REPLACE VIEW {cat}.gold.fact_anomaly AS
-                SELECT a.hk_security, d.symbol, d.sector, a.bar_ts, a.anomaly_score, a.anomaly_type, a.model_version
+                SELECT a.hk_security, d.symbol, d.sector, a.bar_ts, a.anomaly_score, a.anomaly_type, a.model_version, a.computed_utc
                 FROM {cat}.business_vault.bv_anomaly a
                 JOIN {cat}.gold.dim_security d ON a.hk_security = d.hk_security
                 WHERE a.model_version = (SELECT max(model_version) FROM {cat}.business_vault.bv_anomaly)"""

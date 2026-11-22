@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS business_vault.bv_anomaly (
   bar_ts TIMESTAMP,
   anomaly_score DOUBLE,
   anomaly_type STRING,
-  model_version STRING
+  model_version STRING,
+  computed_utc TIMESTAMP
 );
 
 -- Facteurs d'ajustement quotidiens.
