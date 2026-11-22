@@ -295,18 +295,6 @@ resources:
               - --source
               - reddit
 
-        - task_key: finnhub_sent
-          environment_key: serverless_env
-          python_wheel_task:
-            package_name: nmp
-            entry_point: nmp
-            parameters:
-              - --catalog
-              - "${var.catalog}"
-              - ingest
-              - --source
-              - finnhub_sentiment
-
         - task_key: yahoo_daily_to_vault
           depends_on:
             - task_key: yahoo
