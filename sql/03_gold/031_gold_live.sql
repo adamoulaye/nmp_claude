@@ -4,7 +4,7 @@ CREATE OR REPLACE VIEW gold.fact_live_news AS
 WITH base AS (
   SELECT e.hk_article, l.hk_security, e.published_utc, e.available_utc, e.session_type,
          e.sentiment_score, e.sentiment_label, e.category, e.cluster_size,
-         a.headline, a.summary, a.url, a.source_name
+         a.headline, left(a.summary, 500) AS summary, a.url, a.source_name
   FROM business_vault.bv_article_enriched e
   JOIN vault.link_article_security l USING (hk_article)
   JOIN vault.v_article_latest a USING (hk_article)

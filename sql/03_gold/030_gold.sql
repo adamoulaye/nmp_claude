@@ -139,7 +139,7 @@ SELECT
   (c.p_value < 0.05) AS significant,
 
   a.headline,
-  a.summary,
+  left(a.summary, 500) AS summary,
   a.url,
   CASE WHEN lower(a.source_name) = 'benzinga' THEN 'Benzinga' ELSE a.source_name END AS source_name,
   a.bronze_ref,
