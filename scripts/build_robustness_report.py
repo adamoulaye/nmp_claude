@@ -116,7 +116,7 @@ for col in ("car_0_15", "car_0_60"):
             & (summary["fenetre"] == col)
             & (summary["regroupement"] == grouping)
         ]
-        values = dict(zip(sub["indicateur"], sub["valeur"]))
+        values = dict(zip(sub["indicateur"], sub["valeur"], strict=True))
         lines.append(f"**Regroupement : {grouping}**")
         if grouping == "titre-jour":
             metrics = [

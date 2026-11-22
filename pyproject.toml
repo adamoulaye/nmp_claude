@@ -36,6 +36,7 @@ ignore = ["S101"]
 "tests/*" = ["S", "E731"]
 # S608 : le SQL des jobs n'interpole que des noms de catalogue/horodatages issus de la configuration, jamais une saisie externe
 "src/nmp/jobs.py" = ["S608"]
+"src/nmp/jobs_model3.py" = ["S608"]
 "src/nmp/pipelines/*" = ["E501"]
 "src/nmp/common/lakehouse.py" = ["S608"]
 "scripts/*" = ["S", "E501", "I001"]

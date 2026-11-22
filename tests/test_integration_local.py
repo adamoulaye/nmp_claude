@@ -30,7 +30,7 @@ def _bars_page(stock, market):
     def rows(df):
         return [
             {"t": t.isoformat(), "o": c, "h": c, "l": c, "c": c, "v": int(v), "n": 1, "vw": c}
-            for t, c, v in zip(df["ts_utc"], df["close"], df["volume"])
+            for t, c, v in zip(df["ts_utc"], df["close"], df["volume"], strict=True)
         ]
 
     return {"bars": {"AAPL": rows(stock), "SPY": rows(market)}}

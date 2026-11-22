@@ -82,7 +82,9 @@ def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
                     bad.append({"source": src.name, "raw": json.dumps(raw, default=str)[:20000], "error": str(exc)[:500]})
                     continue
                 if rec is None or rec.record_id is None or rec.published_utc is None:
-                    bad.append({"source": src.name, "raw": json.dumps(raw, default=str)[:20000], "error": "id/horodatage manquant"})
+                    bad.append(
+                        {"source": src.name, "raw": json.dumps(raw, default=str)[:20000], "error": "id/horodatage manquant"}
+                    )
                     continue
                 per_symbol[rec.symbol] += 1
                 good.append({
@@ -300,6 +302,7 @@ def enrich(lookback_hours: int = 72) -> None:
             for headline, summary in zip(
                 d["headline"].fillna(""),
                 d["summary"].fillna(""),
+                strict=True,
             )
         ]
 
@@ -976,21 +979,21 @@ def publish() -> None:
                 for stale in ("champion", "challenger"):
                     try:
                         client.delete_registered_model_alias(full, stale)
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass  # alias absent
                 continue
             target, other = ("champion", "challenger") if n == champion else ("challenger", "champion")
             client.set_registered_model_alias(full, target, mv.version)
             try:
                 client.delete_registered_model_alias(full, other)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # alias absent
 
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # 2. Métriques -> gold.fact_model_metrics (idempotent)
         metric_rows = []
-        for n, (full, mv, metrics) in chosen.items():
+        for n, (_full, mv, metrics) in chosen.items():
             if n == champion:
                 alias = "champion"
             elif n.startswith("baseline"):

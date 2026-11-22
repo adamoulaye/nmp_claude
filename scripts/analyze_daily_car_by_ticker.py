@@ -82,7 +82,7 @@ def main():
     # Correction BH séparément pour chaque fenêtre.
     summary["p_value_bh"] = np.nan
 
-    for window, indexes in summary.groupby("window").groups.items():
+    for _window, indexes in summary.groupby("window").groups.items():
         summary.loc[indexes, "p_value_bh"] = benjamini_hochberg(
             summary.loc[indexes, "p_value"].to_numpy()
         )

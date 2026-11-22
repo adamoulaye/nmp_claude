@@ -35,7 +35,7 @@ def load_daily_prices() -> pd.DataFrame:
     archives = latest_archives("yahoo_daily")
     records = []
 
-    for symbol, archive in archives.items():
+    for _symbol, archive in archives.items():
         payload = archive.get("payload") or []
 
         if isinstance(payload, list):
@@ -97,7 +97,7 @@ def load_reference() -> pd.DataFrame:
     archives = latest_archives("yahoo_reference")
     records = []
 
-    for symbol, archive in archives.items():
+    for _symbol, archive in archives.items():
         profile = archive.get("payload") or {}
 
         if isinstance(profile, dict):

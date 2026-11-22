@@ -83,7 +83,7 @@ def analyze_dimension(df, dimension):
     # Correction BH séparément pour chaque fenêtre.
     result["p_value_bh"] = np.nan
 
-    for window, indexes in result.groupby("window").groups.items():
+    for _window, indexes in result.groupby("window").groups.items():
         result.loc[indexes, "p_value_bh"] = benjamini_hochberg(
             result.loc[indexes, "p_value_mean_car"]
         )

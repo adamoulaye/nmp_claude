@@ -174,7 +174,8 @@ def anomalies() -> None:
             )
         spark.sql(
             f"""CREATE OR REPLACE VIEW {cat}.gold.fact_anomaly AS
-                SELECT a.hk_security, d.symbol, d.sector, a.bar_ts, a.anomaly_score, a.anomaly_type, a.model_version, a.computed_utc
+                SELECT a.hk_security, d.symbol, d.sector, a.bar_ts, a.anomaly_score, a.anomaly_type,
+                       a.model_version, a.computed_utc
                 FROM {cat}.business_vault.bv_anomaly a
                 JOIN {cat}.gold.dim_security d ON a.hk_security = d.hk_security
                 WHERE a.model_version = (SELECT max(model_version) FROM {cat}.business_vault.bv_anomaly)"""

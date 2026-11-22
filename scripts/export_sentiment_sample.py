@@ -46,7 +46,7 @@ def run(sql):
     if d.get("status", {}).get("state") != "SUCCEEDED":
         raise SystemExit(str(d.get("status", d)))
     cols = [c["name"] for c in d["manifest"]["schema"]["columns"]]
-    return [dict(zip(cols, r)) for r in d.get("result", {}).get("data_array", [])]
+    return [dict(zip(cols, r, strict=True)) for r in d.get("result", {}).get("data_array", [])]
 
 
 def write(rows):
@@ -64,4 +64,5 @@ def write(rows):
 
 
 if __name__ == "__main__":
-    print("fichiers : %s ; %s ; %d articles" % write(run(SQL)))
+    a, k, n = write(run(SQL))
+    print(f"fichiers : {a} ; {k} ; {n} articles")
