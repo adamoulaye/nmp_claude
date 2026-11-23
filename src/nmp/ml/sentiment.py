@@ -45,7 +45,7 @@ class FinBertScorer:
 
     def score(self, texts: list[str]) -> pd.DataFrame:
         res = self.pipe([t or "" for t in texts])
-        rows = [{d["label"].lower(): d["score"] for d in r} for r in res]
+        rows = [{d["label"].lower(): d["score"] for d in r} for r in res]  # type: ignore[index]
         out = pd.DataFrame(rows).reindex(columns=["positive", "negative", "neutral"]).fillna(0.0)
         out["sentiment_score"] = out["positive"] - out["negative"]
         out["sentiment_label"] = out[["positive", "negative", "neutral"]].idxmax(axis=1)

@@ -71,7 +71,8 @@ def backfill_finnhub_news(start: str, end: str, pause: float = 45.0) -> None:
         d = d0
         while d <= d1:
             day = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
-            good, bad, per_symbol = [], [], Counter()
+            good, bad = [], []
+            per_symbol: Counter[str] = Counter()
             for raw in src.fetch(day, day):
                 total_recv += 1
                 try:
@@ -908,7 +909,7 @@ def publish() -> None:
                 log.warning("Modèle absent du registre : %s", full)
                 continue
             mv = max(versions, key=lambda v: int(v.version))
-            chosen[n] = (full, mv, client.get_run(mv.run_id).data.metrics)
+            chosen[n] = (full, mv, client.get_run(str(mv.run_id)).data.metrics)
 
         # Champion = meilleur holdout_macro_f1 parmi les modèles d'arbres (Random Forest,
         # XGBoost). Les baselines (prior, logreg) restent les lignes de base de comparaison.
@@ -982,7 +983,7 @@ def publish() -> None:
         cut = int(len(d) * (1 - holdout))
         te = d.iloc[cut:].reset_index(drop=True)
         full, mv, _ = chosen[champion]
-        n_test_run = int(client.get_run(mv.run_id).data.params.get("n_test", -1))
+        n_test_run = int(client.get_run(str(mv.run_id)).data.params.get("n_test", -1))
         if n_test_run != len(te):
             raise ValueError(
                 f"Découpage différent de l'entraînement : holdout publié {len(te)} vs n_test={n_test_run}. Publication annulée."
@@ -1016,11 +1017,11 @@ def publish() -> None:
             (
                 r.hk_article,
                 r.hk_security,
-                int(r.predicted_magnitude),
-                float(r.predicted_proba_high),
+                int(r.predicted_magnitude),  # type: ignore[arg-type]
+                float(r.predicted_proba_high),  # type: ignore[arg-type]
                 r.model_name,
                 r.model_version,
-                r.scored_utc.to_pydatetime(),
+                r.scored_utc.to_pydatetime(),  # type: ignore[union-attr]
             )
             for r in out.itertuples(index=False)
         ]

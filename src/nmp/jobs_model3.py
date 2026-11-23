@@ -39,7 +39,7 @@ def baseline_stats(hk: str, res: pd.DataFrame, news_ts: pd.Series, version: str)
     explained_rate_iforest : part des anomalies de l'IsolationForest qui en ont une.
     explained_rate_zscore : meme mesure pour un detecteur de seuil (memes effectifs, plus grands z robustes).
     """
-    cov = news_coverage(res.index, news_ts)
+    cov = news_coverage(pd.DatetimeIndex(res.index), news_ts)
     n_an = int(res["is_anomaly"].sum())
     out = {
         "hk_security": hk,
@@ -84,7 +84,7 @@ def anomaly_rows(
         ts = n.loc[n["hk_security"] == hk, "published_utc"]
         res = detect(g, ts)
         if stats is not None:
-            stats.append(baseline_stats(hk, res, ts, version))
+            stats.append(baseline_stats(str(hk), res, ts, version))
         an = res[res["is_anomaly"]]
         if an.empty:
             continue
@@ -161,7 +161,7 @@ def anomalies() -> None:
                 ]
             )
             recs = [
-                (r.hk_security, r.bar_ts.to_pydatetime(), float(r.anomaly_score), r.anomaly_type, r.model_version, computed)
+                (r.hk_security, r.bar_ts.to_pydatetime(), float(r.anomaly_score), r.anomaly_type, r.model_version, computed)  # type: ignore[union-attr,arg-type]
                 for r in rows.itertuples(index=False)
             ]
             merge_insert_only(
@@ -265,7 +265,7 @@ def granger() -> None:
             ]
         )
         recs = [
-            ("tous titres, horaire", r.cause, r.effect, int(r.lag), float(r.p_value), float(r.p_bonf), n_obs, now)
+            ("tous titres, horaire", r.cause, r.effect, int(r.lag), float(r.p_value), float(r.p_bonf), n_obs, now)  # type: ignore[arg-type]
             for r in res.itertuples(index=False)
         ]
         spark.createDataFrame(recs, schema=schema).write.mode("append").saveAsTable(f"{cat}.gold.fact_granger")

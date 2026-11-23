@@ -225,13 +225,13 @@ def run(kind: str) -> None:
                 from alpaca.data.enums import DataFeed
                 from alpaca.data.live import StockDataStream
 
-                st = StockDataStream(
+                st = StockDataStream(  # type: ignore[assignment]
                     s.alpaca_key,
                     s.alpaca_secret,
                     feed=DataFeed(s.alpaca_feed),
                 )
 
-                st.subscribe_bars(
+                st.subscribe_bars(  # type: ignore[union-attr]
                     handler,
                     *s.bar_tickers,
                 )
@@ -245,7 +245,7 @@ def run(kind: str) -> None:
             backoff = 1
 
             # Boucle bloquante Alpaca
-            st.run()
+            st.run()  # type: ignore[union-attr]
 
             log.warning(
                 "Flux %s arrêté",
