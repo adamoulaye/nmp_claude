@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
+from nmp.common.retry import end_quota_observation, start_quota_observation
+
 log = logging.getLogger("nmp.runlog")
 
 
@@ -33,6 +35,7 @@ def run_log(spark, catalog: str, job: str, source: str = ""):
     from nmp.common.retry import QuotaExceeded, SchemaDrift
 
     stats = RunStats(job=job, source=source)
+    token = start_quota_observation()
     t0 = time.monotonic()
     try:
         yield stats
@@ -43,7 +46,14 @@ def run_log(spark, catalog: str, job: str, source: str = ""):
         stats.message = f"{type(exc).__name__}: {exc}"[:2000]
         raise
     finally:
+        obs = end_quota_observation(token)
+        if "remaining" in obs:
+            stats.quota_remaining = obs["remaining"]
         stats.duration_s = round(time.monotonic() - t0, 2)
         log.info(json.dumps(asdict(stats), default=str))
         if spark is not None:
             spark.createDataFrame([asdict(stats)]).write.mode("append").saveAsTable(f"{catalog}.ops.run_log")
+            if "limit" in obs:
+                row = [(datetime.now(timezone.utc), stats.source, obs["limit"] - obs["remaining"], obs["limit"])]
+                schema = "checked_utc timestamp, source string, used bigint, quota bigint"
+                spark.createDataFrame(row, schema).write.mode("append").saveAsTable(f"{catalog}.ops.api_quota")
