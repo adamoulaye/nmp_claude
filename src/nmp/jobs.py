@@ -768,7 +768,7 @@ def car(lookback_hours: int = 192) -> None:
 
         columns = [field.name for field in schema.fields]
         out = out[columns].copy()
-        out = out.astype(object).where(pd.notna(out), None)
+        out = out.astype(object).where(pd.notna(out), None)  # type: ignore[call-overload]
 
         records = out.to_dict(orient="records")
 
