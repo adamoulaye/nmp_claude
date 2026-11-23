@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS bronze.raw_events (
   CLUSTER BY (source, published_utc) TBLPROPERTIES (delta.enableChangeDataFeed = true, delta.deletedFileRetentionDuration = 'interval 30 days');
 CREATE TABLE IF NOT EXISTS bronze.raw_bars LIKE bronze.raw_events;
 CREATE TABLE IF NOT EXISTS bronze.rejects (source STRING, raw STRING, error STRING);
+-- Quarantaine vue du Silver : enregistrements refuses a l'ingestion (typage, schema, validation)
+CREATE OR REPLACE VIEW silver.quarantine AS SELECT source, raw, error FROM bronze.rejects;
 
 CREATE TABLE IF NOT EXISTS ops.watermarks (source STRING, watermark_utc TIMESTAMP);
 CREATE TABLE IF NOT EXISTS ops.run_log (job STRING, source STRING, run_id STRING, started_utc TIMESTAMP, duration_s DOUBLE,
