@@ -18,5 +18,5 @@ UNION ALL SELECT 'S3 rejets 7j (%)', source, '< 5', round(100.0*rej/nullif(rec,0
 UNION ALL SELECT 'S4 enrich+car dernier run incremental (s)', 'batch', '< 3600', round(d,0), CASE WHEN d < 3600 THEN 'OK' ELSE 'KO' END FROM dur
 UNION ALL SELECT 'S5 titres avec barres par jour (min)', 'fact_bar_1m', '>= 28', cast(min(n) AS DOUBLE), CASE WHEN min(n) >= 28 THEN 'OK' ELSE 'KO' END FROM bars
 UNION ALL SELECT 'S6 publication 7j (%)', 'publish', '>= 95', round(100.0*ok/n,1), CASE WHEN ok/n >= 0.95 THEN 'OK' ELSE 'KO' END FROM pub
-UNION ALL SELECT 'S7 quota API (%)', 'ops.api_quota', '< 80', CAST(NULL AS DOUBLE), 'NON_INSTRUMENTE'
+UNION ALL SELECT 'S7 quota API (%)', 'ops.api_quota', '< 80', round(max(100.0 * used / quota), 1), CASE WHEN max(quota) IS NULL THEN 'NON_INSTRUMENTE' WHEN max(100.0 * used / quota) < 80 THEN 'OK' ELSE 'KO' END FROM ops.api_quota WHERE quota > 0 AND checked_utc >= current_timestamp() - INTERVAL 7 DAYS
 ) s;
