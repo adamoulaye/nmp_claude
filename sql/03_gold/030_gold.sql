@@ -27,6 +27,15 @@ JOIN (
   ) = 1
 ) r USING (hk_security);
 
+CREATE OR REPLACE VIEW gold.dim_sector AS
+SELECT
+  sha2(upper(trim(sector)), 256) AS hk_sector,
+  sector,
+  count(*) AS nb_titres
+FROM gold.dim_security
+WHERE sector IS NOT NULL
+GROUP BY sector;
+
 CREATE OR REPLACE VIEW gold.dim_category AS
 SELECT DISTINCT category
 FROM business_vault.bv_article_enriched;
