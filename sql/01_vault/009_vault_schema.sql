@@ -20,4 +20,4 @@ CREATE TABLE IF NOT EXISTS vault.nhsat_bar_1m (hk_security STRING, bar_ts TIMEST
 CREATE TABLE IF NOT EXISTS vault.sat_corporate_action (hk_security STRING, ex_date DATE, action STRING, value DOUBLE, load_ts TIMESTAMP, record_source STRING);
 -- Vue : dernière version de chaque article (utilisée par le job d'enrichissement)
 CREATE OR REPLACE VIEW vault.v_article_latest AS
-SELECT * EXCEPT (rn) FROM (SELECT *, row_number() OVER (PARTITION BY hk_article ORDER BY updated_utc DESC, load_ts DESC) rn FROM vault.sat_article_content) WHERE rn = 1;
+SELECT * EXCEPT (rn) FROM (SELECT *, row_number() OVER (PARTITION BY hk_article ORDER BY updated_utc DESC, load_ts DESC) rn FROM vault.sat_article_content WHERE coalesce(source_name, '') <> 'test') WHERE rn = 1;

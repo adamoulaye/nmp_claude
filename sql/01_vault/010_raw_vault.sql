@@ -52,4 +52,4 @@ ON t.hk_security = s.hk_security AND t.bar_ts = s.bar_ts WHEN NOT MATCHED THEN I
 
 -- Vue : dernière version de chaque article (utilisée par le job d'enrichissement)
 CREATE OR REPLACE VIEW vault.v_article_latest AS
-SELECT * EXCEPT (rn) FROM (SELECT *, row_number() OVER (PARTITION BY hk_article ORDER BY updated_utc DESC, load_ts DESC) rn FROM vault.sat_article_content) WHERE rn = 1;
+SELECT * EXCEPT (rn) FROM (SELECT *, row_number() OVER (PARTITION BY hk_article ORDER BY updated_utc DESC, load_ts DESC) rn FROM vault.sat_article_content WHERE coalesce(source_name, '') <> 'test') WHERE rn = 1;

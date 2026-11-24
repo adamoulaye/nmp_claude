@@ -7,6 +7,7 @@ WITH docs AS (
          lower(concat_ws(' ', c.headline, c.summary)) AS txt
   FROM (
     SELECT * FROM vault.sat_article_content
+    WHERE coalesce(source_name, '') <> 'test'
     QUALIFY row_number() OVER (PARTITION BY hk_article ORDER BY load_ts DESC) = 1
   ) c
   JOIN vault.hub_article h ON h.hk_article = c.hk_article

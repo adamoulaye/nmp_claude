@@ -143,6 +143,7 @@ def anomalies() -> None:
                 JOIN {cat}.vault.link_article_security l ON a.hk_article = l.hk_article
                 LEFT JOIN {cat}.business_vault.bv_article_enriched e ON a.hk_article = e.hk_article
                 WHERE coalesce(e.is_first, true)
+                  AND coalesce(a.source_name, '') <> 'test'
                 GROUP BY l.hk_security, a.hk_article"""
         ).toPandas()
         st.received = len(bars)
