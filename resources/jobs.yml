@@ -194,11 +194,65 @@ resources:
             parameters:
               catalog: "${var.catalog}"
 
+        - task_key: health
+          environment_key: serverless_env
+          depends_on:
+            - task_key: finnhub
+            - task_key: alpaca_news
+            - task_key: sec_8k
+            - task_key: bars_backfill
+            - task_key: vault_news_batch
+            - task_key: vault_bars_batch
+          run_if: ALL_DONE
+          python_wheel_task:
+            package_name: nmp
+            entry_point: nmp
+            parameters:
+              - --catalog
+              - "${var.catalog}"
+              - health
+
+
+
+    # ============================================================
+    # ENRICHISSEMENT ET CAR (hors de la boucle d'ingestion de 5 minutes)
+    # ============================================================
+
+    enrich_car:
+      name: nmp-enrich-car-${bundle.target}
+
+      schedule:
+        quartz_cron_expression: "0 15 */6 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+
+      max_concurrent_runs: 1
+
+      email_notifications:
+        on_failure:
+          - "${var.alert_email}"
+
+      environments:
+        - environment_key: serverless_env
+          spec:
+            environment_version: "2"
+            dependencies:
+              - "${workspace.root_path}/artifacts/.internal/nmp-0.1.1-py3-none-any.whl"
+              - "pyarrow>=15"
+
+        - environment_key: enrich_env
+          spec:
+            environment_version: "2"
+            dependencies:
+              - "${workspace.root_path}/artifacts/.internal/nmp-0.1.1-py3-none-any.whl"
+              - "pyarrow>=15"
+              - "transformers>=4.41"
+              - "torch>=2.2"
+
+      tasks:
+
         - task_key: enrich
           environment_key: enrich_env
-          depends_on:
-            - task_key: vault_news_batch
-            - task_key: sec_8k
           python_wheel_task:
             package_name: nmp
             entry_point: nmp
@@ -211,7 +265,6 @@ resources:
           environment_key: serverless_env
           depends_on:
             - task_key: enrich
-            - task_key: vault_bars_batch
           python_wheel_task:
             package_name: nmp
             entry_point: nmp
@@ -219,21 +272,6 @@ resources:
               - --catalog
               - "${var.catalog}"
               - car
-
-        - task_key: health
-          environment_key: serverless_env
-          depends_on:
-            - task_key: car
-          run_if: ALL_DONE
-          python_wheel_task:
-            package_name: nmp
-            entry_point: nmp
-            parameters:
-              - --catalog
-              - "${var.catalog}"
-              - health
-
-
 
     # ============================================================
     # INGESTION QUOTIDIENNE
