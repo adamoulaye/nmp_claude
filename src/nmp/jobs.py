@@ -866,7 +866,11 @@ def health() -> None:
                 unix_timestamp(current_timestamp())
                 - unix_timestamp(max(ingested_utc))
             ) / 60.0
-        FROM {cat}.bronze.raw_events
+        FROM (
+            SELECT source, published_utc, ingested_utc FROM {cat}.bronze.raw_events
+            UNION ALL
+            SELECT source, published_utc, ingested_utc FROM {cat}.bronze.raw_bars
+        )
         GROUP BY source
     """)
 
